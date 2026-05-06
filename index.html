@@ -1,0 +1,3526 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TerraShield — Protección Atmosférica y Mallas de Tierra</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+<!-- ============================================================
+     SPLASH SCREEN
+     ============================================================ -->
+<div id="screen-splash" class="screen active">
+  <svg class="logo-boot" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M40 6L10 18V40C10 56 40 74 40 74C40 74 70 56 70 40V18L40 6Z" fill="#1a4a9e" stroke="#2F6FCC" stroke-width="1.5"/>
+    <path d="M44 22L34 42H42L37 58L52 36H44L44 22Z" fill="#F5C400"/>
+    <path d="M22 62H58" stroke="#8FB3E8" stroke-width="1.5"/>
+    <path d="M28 62V68M34 62V68M40 62V68M46 62V68M52 62V68" stroke="#8FB3E8" stroke-width="1.2"/>
+    <path d="M22 68H28M34 68H40M46 68H52M28 68H34M40 68H46" stroke="#8FB3E8" stroke-width="0.8"/>
+  </svg>
+  <div class="brand-boot">TERRASHIELD</div>
+  <div style="font-size:0.72rem;color:rgba(255,255,255,0.35);font-family:var(--font-mono);margin-top:6px;">Iniciando sistema...</div>
+  <div class="boot-bar-wrap">
+    <div class="boot-bar" id="boot-bar"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     HOME SCREEN
+     ============================================================ -->
+<div id="screen-home" class="screen" style="flex-direction:column;">
+  <div class="home-topbar">
+    <svg class="ts-logo-sm" viewBox="0 0 40 40" fill="none">
+      <path d="M20 3L5 9V20C5 28 20 37 20 37C20 37 35 28 35 20V9L20 3Z" fill="#0A3D91" stroke="#2F6FCC" stroke-width="1"/>
+      <path d="M22 11L17 21H21L18.5 29L26 18H22L22 11Z" fill="#F5C400"/>
+      <path d="M11 31H29" stroke="#8FB3E8" stroke-width="1"/>
+      <path d="M14 31V34M17 31V34M20 31V34M23 31V34M26 31V34" stroke="#8FB3E8" stroke-width="0.8"/>
+    </svg>
+    <span class="ts-brand">TERRASHIELD</span>
+    <span class="ts-version">v1.0.0</span>
+  </div>
+
+  <div class="home-hero" style="position:relative;overflow:hidden;">
+  <svg class="home-grid-bg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;">
+    <defs>
+      <pattern id="grid-pattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.18"/>
+      </pattern>
+      <radialGradient id="grid-fade" cx="50%" cy="50%" r="55%">
+        <stop offset="0%" stop-color="white" stop-opacity="0"/>
+        <stop offset="100%" stop-color="white" stop-opacity="1"/>
+      </radialGradient>
+      <mask id="grid-mask">
+        <rect width="100%" height="100%" fill="white"/>
+        <rect width="100%" height="100%" fill="url(#grid-fade)"/>
+      </mask>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#grid-pattern)" mask="url(#grid-mask)" class="home-grid-rect"/>
+  </svg>
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:100%;">
+    <div class="hero-shield-wrap">
+      <div class="ring-outer"></div>
+      <svg width="110" height="110" viewBox="0 0 110 110" fill="none">
+        <path d="M55 8L12 25V55C12 77 55 100 55 100C55 100 98 77 98 55V25L55 8Z" fill="#0A3D91" stroke="#2F6FCC" stroke-width="2"/>
+        <path d="M59 32L46 57H56L50 78L72 50H62L62 32Z" fill="#F5C400"/>
+        <path d="M30 88H80" stroke="#8FB3E8" stroke-width="1.8"/>
+        <path d="M38 88V94M46 88V94M55 88V94M64 88V94M72 88V94" stroke="#8FB3E8" stroke-width="1.4"/>
+        <path d="M38 94H46M46 94H55M55 94H64M64 94H72" stroke="#8FB3E8" stroke-width="1"/>
+      </svg>
+    </div>
+
+    <h1 class="home-title">TERRASHIELD</h1>
+    <p class="home-subtitle">Diseño de apantallamiento y malla de puesta a tierra para subestaciones eléctricas</p>
+
+    <div class="home-actions">
+      <button class="home-btn primary" onclick="openModal('modal-new-project')">
+        <div class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div>
+        <div><div class="btn-label">Nuevo proyecto</div><div class="btn-desc">Crear desde cero</div></div>
+      </button>
+      <button class="home-btn" onclick="loadProject()">
+        <div class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1"/><path d="M15 13l3 3-3 3M18 16H9"/></svg></div>
+        <div><div class="btn-label">Cargar proyecto</div><div class="btn-desc">Abrir archivo .json</div></div>
+      </button>
+      <button class="home-btn" onclick="openModal('modal-config')">
+        <div class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+        <div><div class="btn-label">Configuración</div><div class="btn-desc">Preferencias</div></div>
+      </button>
+      <button class="home-btn" onclick="openModal('modal-manual')">
+        <div class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg></div>
+        <div><div class="btn-label">Ayuda / Manual</div><div class="btn-desc">Documentación</div></div>
+      </button>
+    </div>
+
+  </div><!-- /z-index wrapper -->
+    <div class="home-credits">
+      Proyecto Final<br>
+      Universidad del Norte · Barranquilla, Colombia<br>
+      <span style="color:var(--text-light);font-family:var(--font-mono);font-size:0.65rem;">© 2026 TerraShield — Todos los derechos reservados</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     APP SCREEN
+     ============================================================ -->
+<div id="screen-app" class="screen">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg width="30" height="30" viewBox="0 0 40 40" fill="none">
+        <path d="M20 3L5 9V20C5 28 20 37 20 37C20 37 35 28 35 20V9L20 3Z" fill="#0A3D91" stroke="#2F6FCC" stroke-width="1"/>
+        <path d="M22 11L17 21H21L18.5 29L26 18H22L22 11Z" fill="#F5C400"/>
+        <path d="M11 31H29" stroke="#8FB3E8" stroke-width="1"/>
+        <path d="M14 31V34M17 31V34M20 31V34M23 31V34M26 31V34" stroke="#8FB3E8" stroke-width="0.8"/>
+      </svg>
+      <div>
+        <div class="sb-brand">TERRASHIELD</div>
+        <div class="sb-proj" id="sb-proj-name">Proyecto —</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">NAVEGACIÓN</div>
+      <div class="nav-item active" onclick="showPage('page-inicio', this)">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+        <span class="nav-label">Inicio</span>
+      </div>
+      <div class="nav-section-label" style="margin-top:10px;">MÓDULOS</div>
+      <div class="nav-item" onclick="showPage('page-apant', this)">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L3 7v7c0 5.25 3.75 10.15 9 11.25C17.25 24.15 21 19.25 21 14V7L12 2z"/></svg></span>
+        <span class="nav-label">Apantallamiento</span>
+      </div>
+      <div class="nav-item" onclick="showPage('page-malla', this)">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M2 8h20M2 14h20M8 2v20M14 2v20"/></svg></span>
+        <span class="nav-label">Malla a tierra</span>
+      </div>
+      <div class="nav-section-label" style="margin-top:10px;">SALIDA</div>
+      <div class="nav-item" id="nav-exportar" onclick="navExportarClick(this)">
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+        <span class="nav-label">Exportar reporte</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="sidebar-footer-btn" onclick="openModal('modal-config')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Configuración
+      </button>
+      <button class="sidebar-footer-btn" onclick="saveProject()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Guardar proyecto
+      </button>
+      <button class="sidebar-footer-btn" onclick="showScreen('screen-home')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Salir al inicio
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="app-main">
+    <div class="app-topbar">
+      <span class="topbar-title" id="topbar-section-name">INICIO</span>
+      <span class="topbar-breadcrumb" id="topbar-proj-breadcrumb"></span>
+      <div class="topbar-actions">
+        <button class="btn btn-secondary" onclick="openModal('modal-manual')" style="height:32px;font-size:0.76rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Manual
+        </button>
+        <button class="btn btn-accent" onclick="saveProject()" style="height:32px;font-size:0.76rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+          Guardar
+        </button>
+      </div>
+    </div>
+
+    <div class="app-content">
+
+      <!-- PAGE: INICIO -->
+      <div id="page-inicio" class="section-page active">
+        <div class="page-header">
+          <h1>Panel principal</h1>
+          <p>Resumen del estado del proyecto y acceso rápido a módulos</p>
+        </div>
+        <div class="info-banner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Proyecto activo. Use los módulos de cálculo para completar el diseño.
+        </div>
+        <div class="card-grid">
+          <div class="stat-card">
+            <div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L3 7v7c0 5.25 3.75 10.15 9 11.25C17.25 24.15 21 19.25 21 14V7L12 2z"/></svg></div>
+            <div class="sc-label">Apantallamiento</div>
+            <div class="sc-value">—</div>
+            <div class="sc-unit">Pendiente de cálculo</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M2 8h20M2 14h20M8 2v20M14 2v20"/></svg></div>
+            <div class="sc-label">Resistencia de malla</div>
+            <div class="sc-value" id="stat-rg">—</div>
+            <div class="sc-unit" id="stat-rg-unit">Ω — Por calcular</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+            <div class="sc-label">Densidad de rayos</div>
+            <div class="sc-value" id="stat-ng">—</div>
+            <div class="sc-unit">rayos/km²/año</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></svg></div>
+            <div class="sc-label">Temperatura estimada</div>
+            <div class="sc-value" id="stat-temp">—</div>
+            <div class="sc-unit">°C</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg></div>
+            <div class="sc-label">Ubicación</div>
+            <div class="sc-value" style="font-size:0.9rem;" id="stat-ubicacion">—</div>
+            <div class="sc-unit" id="stat-depto">Sin definir</div>
+          </div>
+        </div>
+        <div class="form-card" style="margin-bottom:18px;">
+          <div class="form-card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg> Identificación del proyecto</div>
+          <div class="form-row" style="margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0;"><label class="form-label">Nombre del proyecto</label><input class="form-input" id="dg-nombre" placeholder="Ej: SE_Barranquilla_Norte"></div>
+            <div class="form-group" style="margin-bottom:0;"><label class="form-label">Tipo de instalación</label><input class="form-input" value="Subestación eléctrica" disabled></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0;"><label class="form-label">Propietario / Empresa</label><input class="form-input" id="dg-propietario" placeholder="Nombre de la entidad"></div>
+            <div class="form-group" style="margin-bottom:0;"><label class="form-label">Responsable técnico</label><input class="form-input" id="dg-responsable" placeholder="Nombre del ingeniero"></div>
+          </div>
+        </div>
+
+        <h3 style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:12px;">Estado del proyecto</h3>
+        <div class="status-list">
+          <div class="status-item"><span class="status-dot done"></span><span class="si-label">Datos del proyecto</span><span class="si-tag done">Completado</span></div>
+          <div class="status-item"><span class="status-dot done"></span><span class="si-label">Ubicación validada</span><span class="si-tag done">Completado</span></div>
+          <div class="status-item"><span class="status-dot pending"></span><span class="si-label">Cálculo de apantallamiento</span><span class="si-tag pending">Pendiente</span></div>
+          <div class="status-item" id="si-malla"><span class="status-dot pending"></span><span class="si-label">Diseño de malla a tierra</span><span class="si-tag pending" id="si-malla-tag">Pendiente</span></div>
+        </div>
+      </div>
+
+      <!-- PAGE: APANTALLAMIENTO -->
+      <div id="page-apant" class="section-page">
+        <div class="page-header">
+          <h1>Apantallamiento</h1>
+          <p>Diseño de protección contra descargas atmosféricas directas — IEEE Std 998</p>
+        </div>
+
+        <!-- Método de cálculo -->
+        <div class="form-card" style="margin-bottom:20px;">
+          <div class="form-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+            Método de cálculo
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px 0 4px;">
+            <span class="field-tag">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/></svg>
+              Modelo Electrogeométrico (EGM)
+            </span>
+            <span style="font-size:0.73rem;color:var(--text-light);">IEEE Std 998 — Esfera rodante (Rolling Sphere Method)</span>
+          </div>
+        </div>
+
+        <!-- Parámetros EGM -->
+        <div class="form-card" style="margin-bottom:20px;">
+          <div class="form-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Parámetros del modelo
+          </div>
+          <div class="form-row" style="margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" style="display:flex;align-items:center;gap:6px;">
+                BIL — Nivel básico de impulso (kV)
+                <span class="tooltip-wrap">
+                  <svg class="tooltip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span class="tooltip-text">Basic Insulation Level: nivel de tensión de impulso que el equipo soporta sin falla. Determina el radio de la esfera rodante.</span>
+                </span>
+              </label>
+              <input class="form-input" type="number" id="apant-bil" placeholder="Ej: 350" value="350" min="1">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" style="display:flex;align-items:center;gap:6px;">
+                Zs — Impedancia de descarga (Ω)
+                <span class="tooltip-wrap">
+                  <svg class="tooltip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span class="tooltip-text">Impedancia de onda del sistema de puesta a tierra. Junto con BIL, determina la corriente crítica de rayo Is = 2.2·BIL/Zs.</span>
+                </span>
+              </label>
+              <input class="form-input" type="number" id="apant-zs" placeholder="Ej: 300" value="300" min="1">
+            </div>
+          </div>
+          <div class="form-row" style="margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" style="display:flex;align-items:center;gap:6px;">
+                k — Factor de forma
+                <span class="tooltip-wrap">
+                  <svg class="tooltip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span class="tooltip-text">Factor de forma para el cálculo del radio de esfera. S = k · 8 · Is^0.65. k = 1.0 para estructuras en campo abierto; k = 1.2 con conductores adyacentes (IEEE 998).</span>
+                </span>
+              </label>
+              <select class="select-input" id="apant-k" style="height:34px;font-size:0.88rem;">
+                <option value="1">1</option>
+                <option value="1.2" selected>1.2</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" style="display:flex;align-items:center;gap:6px;">
+                Td — Días de tormenta al año
+                <span class="tooltip-wrap">
+                  <svg class="tooltip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span class="tooltip-text">Nivel isoceráunico. Permite calcular el GFD: Ng = 0.0017 × Td^1.56 (IEEE Std 998).</span>
+                </span>
+              </label>
+              <input class="form-input" type="number" id="apant-td" placeholder="Ej: 80" min="0" max="365" oninput="calcNgFromTd()">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" style="display:flex;align-items:center;gap:6px;">
+                Ng — GFD calculado (flashes/km²/año)
+                <span class="tooltip-wrap">
+                  <svg class="tooltip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span class="tooltip-text">Ground Flash Density. Se calcula automáticamente desde Td, o se toma de la ubicación del proyecto.</span>
+                </span>
+              </label>
+              <input class="form-input" type="text" id="apant-ng-calc" placeholder="Se calcula con Td, o viene del proyecto" disabled style="background:var(--blue-pale);font-size:0.82rem;">
+              <div id="apant-ng-fuente" style="font-size:0.68rem;color:var(--text-light);margin-top:4px;"></div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" style="display:flex;align-items:center;gap:6px;">
+                A — Área de la subestación (m²)
+                <span class="tooltip-wrap">
+                  <svg class="tooltip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span class="tooltip-text">Área del patio de la subestación en m². Se usa para estimar el número esperado de impactos directos: Ns = Ng × A / 1 000 000 (IEEE Std 998).</span>
+                </span>
+              </label>
+              <input class="form-input" type="number" id="apant-area" placeholder="Ej: 10000" min="1">
+            </div>
+          </div>
+        </div>
+
+        <!-- Sistema de apantallamiento: mástiles, equipos, cables de guarda -->
+        <div class="form-card" style="margin-bottom:20px;">
+          <div class="form-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            Sistema de apantallamiento
+          </div>
+
+          <!-- Barra de tabs -->
+          <div class="toggle-group" id="apant-tab-bar" style="margin-bottom:18px;">
+            <button class="toggle-btn active" onclick="apantSwitchTab('mastiles')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;"><line x1="12" y1="2" x2="12" y2="22"/><path d="M8 6h4M8 10h6M8 14h4"/></svg>
+              Mástiles
+            </button>
+            <button class="toggle-btn" onclick="apantSwitchTab('equipos')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              Equipos
+            </button>
+            <button class="toggle-btn" onclick="apantSwitchTab('guardas')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;margin-right:5px;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              Cables de guarda
+            </button>
+          </div>
+
+          <!-- TAB: Mástiles -->
+          <div id="apant-tab-mastiles" class="apant-tab-pane">
+            <div class="apant-list" id="apant-mastiles-list">
+              <div class="apant-list-empty">Sin mástiles — agregue al menos uno para calcular</div>
+            </div>
+            <div class="apant-add-row">
+              <div class="form-group">
+                <label class="form-label">X (m)</label>
+                <input class="form-input" id="apant-new-mx" type="number" value="0" step="1" style="height:34px;width:80px;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Y (m)</label>
+                <input class="form-input" id="apant-new-my" type="number" value="0" step="1" style="height:34px;width:80px;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Altura h (m)</label>
+                <input class="form-input" id="apant-new-mh" type="number" value="15" step="0.5" min="0.1" style="height:34px;width:90px;">
+              </div>
+              <button class="btn btn-primary" style="height:34px;flex-shrink:0;" onclick="apantAddMast()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Agregar mástil
+              </button>
+            </div>
+          </div>
+
+          <!-- TAB: Equipos -->
+          <div id="apant-tab-equipos" class="apant-tab-pane" style="display:none;">
+            <div class="apant-list" id="apant-equipos-list">
+              <div class="apant-list-empty">Sin equipos — opcional, para verificar apantallamiento punto a punto</div>
+            </div>
+            <div class="apant-add-row">
+              <div class="form-group" style="flex-basis:150px;min-width:120px;">
+                <label class="form-label">Nombre</label>
+                <input class="form-input" id="apant-new-cname" type="text" placeholder="Ej: Transformador" style="height:34px;width:100%;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">X base (m)</label>
+                <input class="form-input" id="apant-new-cx" type="number" value="5" step="1" style="height:34px;width:72px;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Y base (m)</label>
+                <input class="form-input" id="apant-new-cy" type="number" value="5" step="1" style="height:34px;width:72px;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Z base (m)</label>
+                <input class="form-input" id="apant-new-cz" type="number" value="0" step="0.5" style="height:34px;width:72px;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">dx (m)</label>
+                <input class="form-input" id="apant-new-cdx" type="number" value="5" step="0.5" min="0.1" style="height:34px;width:68px;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">dy (m)</label>
+                <input class="form-input" id="apant-new-cdy" type="number" value="5" step="0.5" min="0.1" style="height:34px;width:68px;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">dz — alto (m)</label>
+                <input class="form-input" id="apant-new-cdz" type="number" value="3" step="0.5" min="0.1" style="height:34px;width:80px;">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Color</label>
+                <input type="color" id="apant-new-ccolor" value="#F5C400" style="height:34px;width:44px;padding:2px 3px;border:1px solid var(--grey-line);border-radius:var(--radius-md);cursor:pointer;background:var(--white);">
+              </div>
+              <button class="btn btn-primary" style="height:34px;flex-shrink:0;" onclick="apantAddCube()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Agregar equipo
+              </button>
+            </div>
+          </div>
+
+          <!-- TAB: Cables de guarda -->
+          <div id="apant-tab-guardas" class="apant-tab-pane" style="display:none;">
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--radius-md);padding:13px 15px;margin-bottom:14px;">
+              <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2.2" style="width:14px;height:14px;flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span style="font-size:0.77rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.05em;">Importante — Configuración de cables de guarda</span>
+              </div>
+              <div style="font-size:0.78rem;color:var(--text-mid);line-height:1.75;">
+                <div style="font-weight:600;margin-bottom:4px;">Seleccione una geometría válida:</div>
+                <ul style="margin:0 0 10px 20px;padding:0;">
+                  <li>1 guarda independiente</li>
+                  <li>2 guardas paralelas</li>
+                  <li>3 guardas conectadas</li>
+                  <li>4 guardas en rectángulo/cuadrado</li>
+                </ul>
+                <div style="font-weight:600;margin-bottom:4px;">Condiciones:</div>
+                <ul style="margin:0 0 0 20px;padding:0;">
+                  <li>✓ Las guardas deben ser paralelas o perpendiculares.</li>
+                  <li>✓ La separación entre guardas no debe superar el diámetro de la esfera rodante.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="apant-list" id="apant-guardas-list">
+              <div class="apant-list-empty">Sin cables de guarda — opcional</div>
+            </div>
+            <div class="apant-add-row">
+              <div class="form-group" style="flex-basis:200px;min-width:160px;">
+                <label class="form-label">Mástil inicial</label>
+                <select class="select-input" id="apant-new-gi" style="height:34px;font-size:0.82rem;">
+                  <option value="">— Agregue mástiles primero —</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex-basis:200px;min-width:160px;">
+                <label class="form-label">Mástil final</label>
+                <select class="select-input" id="apant-new-gj" style="height:34px;font-size:0.82rem;">
+                  <option value="">— Agregue mástiles primero —</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" style="height:34px;flex-shrink:0;" onclick="apantAddGuardWire()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Agregar cable
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botón calcular -->
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:28px;">
+          <button class="btn btn-primary" id="apant-btn-calc" onclick="apantCalcular()" style="height:42px;font-size:0.88rem;padding:0 28px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Calcular apantallamiento
+          </button>
+          <div id="apant-spinner" style="display:none;font-size:0.78rem;color:var(--text-light);gap:8px;align-items:center;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;animation:spin 1s linear infinite;"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>
+            Calculando modelo 3D…
+          </div>
+          <div id="apant-error" style="display:none;font-size:0.78rem;color:var(--error);"></div>
+        </div>
+
+        <!-- Resultados -->
+        <div id="apant-resultados" style="display:none;">
+
+          <!-- Banner radio de esfera -->
+          <div class="info-banner" style="margin-bottom:20px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="22"/><line x1="2" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="22" y2="12"/></svg>
+            <span>Radio de esfera rodante calculado: <strong id="apant-val-S" style="font-family:var(--font-mono);">—</strong> m &nbsp;·&nbsp; S = k · 8 · (2.2·BIL/Zs)<sup>0.65</sup></span>
+          </div>
+
+          <!-- Gráfico 3D Plotly -->
+          <div class="apant-chart-wrap" style="margin-bottom:20px;">
+            <div style="padding:12px 18px 10px;border-bottom:1px solid var(--grey-line);display:flex;align-items:center;gap:8px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:var(--blue-mid);flex-shrink:0;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              <span style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-mid);">Superficie de apantallamiento — Vista 3D</span>
+              <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+                <button class="btn btn-secondary" id="apant-cam-top"   onclick="apantSetCamera('top')"   style="height:28px;font-size:0.72rem;padding:0 12px;">Superior</button>
+                <button class="btn btn-secondary" id="apant-cam-front" onclick="apantSetCamera('front')" style="height:28px;font-size:0.72rem;padding:0 12px;">Frontal</button>
+                <button class="btn btn-secondary" id="apant-cam-side"  onclick="apantSetCamera('side')"  style="height:28px;font-size:0.72rem;padding:0 12px;">Lateral</button>
+                <button class="btn btn-secondary" id="apant-cam-3d"    onclick="apantSetCamera('3d')"    style="height:28px;font-size:0.72rem;padding:0 12px;">3D libre</button>
+                <div style="width:1px;height:18px;background:var(--grey-line);margin:0 4px;"></div>
+                <button class="btn btn-secondary" id="apant-btn-clean" onclick="apantToggleCleanView()" style="height:28px;font-size:0.72rem;padding:0 12px;display:flex;align-items:center;gap:5px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:13px;height:13px;flex-shrink:0;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  Vista limpia
+                </button>
+                <div style="width:1px;height:18px;background:var(--grey-line);margin:0 4px;"></div>
+                <button class="btn btn-secondary" onclick="apantDescargarImagen()" style="height:28px;font-size:0.72rem;padding:0 12px;display:flex;align-items:center;gap:5px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:13px;height:13px;flex-shrink:0;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  PNG
+                </button>
+              </div>
+            </div>
+            <div id="apant-chart" style="width:100%;height:720px;"></div>
+          </div>
+
+          <!-- Tabla de verificación de equipos -->
+          <div class="result-table-wrap" id="apant-verif-wrap" style="display:none;margin-bottom:20px;">
+            <div style="padding:14px 16px 12px;border-bottom:1px solid var(--grey-line);display:flex;align-items:center;gap:8px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:var(--blue-mid);flex-shrink:0;"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+              <div>
+                <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-mid);">Verificación de equipos apantallados</div>
+                <div style="font-size:0.71rem;color:var(--text-light);margin-top:3px;">Comprobación punto a punto mediante el método de la esfera rodante (EGM). Cada equipo se muestrea en su superficie superior y lateral.</div>
+              </div>
+            </div>
+            <div style="padding:10px 16px 6px;border-bottom:1px solid var(--grey-line);display:flex;gap:20px;font-size:0.72rem;color:var(--text-light);">
+              <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;"></span>Protegido — ningún punto sobrepasa la envolvente de protección</span>
+              <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#dc2626;"></span>Sin protección — al menos un punto queda expuesto</span>
+            </div>
+            <table class="result-table">
+              <thead>
+                <tr>
+                  <th>Equipo</th>
+                  <th>Puntos protegidos / evaluados</th>
+                  <th>Cobertura</th>
+                  <th>Exceso máx.</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="apant-verif-tbody"></tbody>
+            </table>
+            <div style="padding:10px 16px;font-size:0.71rem;color:var(--text-light);border-top:1px solid var(--grey-line);">
+              El exceso máximo indica cuánto se eleva el punto más crítico por encima de la envolvente de protección. Un valor "—" en equipos protegidos indica que todos los puntos quedan dentro de la zona segura. Basado en IEEE Std 998 — Rolling Sphere Method.
+            </div>
+          </div>
+
+          <!-- Recomendaciones correctivas -->
+          <div id="apant-recs-outer" style="display:none;margin-bottom:20px;">
+            <div class="result-table-wrap">
+              <div style="padding:14px 16px 12px;border-bottom:1px solid var(--grey-line);display:flex;align-items:center;gap:10px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:var(--blue-mid);flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div style="flex:1;">
+                  <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-mid);">Recomendaciones correctivas</div>
+                  <div style="font-size:0.71rem;color:var(--text-light);margin-top:2px;">Propuestas geométricas basadas en los puntos críticos no apantallados. Cada propuesta se verifica internamente con el modelo EGM.</div>
+                </div>
+                <button class="btn btn-primary" id="apant-btn-recs" onclick="apantGetRecommendations()" style="height:34px;font-size:0.78rem;padding:0 16px;flex-shrink:0;display:flex;align-items:center;gap:6px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:13px;height:13px;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                  Analizar recomendaciones
+                </button>
+              </div>
+              <div id="apant-recs-body" style="padding:16px 18px;">
+                <div style="font-size:0.78rem;color:var(--text-light);">Haga clic en "Analizar recomendaciones" para generar propuestas de mejora basadas en los puntos críticos.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cálculos estadísticos IEEE 998 — al final -->
+          <div class="result-table-wrap" id="apant-ieee-wrap" style="display:none;margin-bottom:20px;">
+            <div style="padding:14px 16px 10px;border-bottom:1px solid var(--grey-line);display:flex;align-items:center;gap:8px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:var(--blue-mid);flex-shrink:0;"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+              <span style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-mid);">Análisis estadístico de riesgo — IEEE Std 998</span>
+            </div>
+            <div id="apant-ieee-body" style="padding:16px 18px;"></div>
+          </div>
+
+        </div><!-- /apant-resultados -->
+
+      </div><!-- /page-apant -->
+
+      <!-- PAGE: MALLA A TIERRA -->
+      <div id="page-malla" class="section-page">
+        <div class="page-header">
+          <h1>Malla de puesta a tierra</h1>
+          <p>Diseño y verificación de la malla de tierra — IEEE Std 80-2013</p>
+        </div>
+
+        <!-- §1 GEOMETRÍA -->
+        <div class="form-card">
+          <div class="form-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M2 8h20M2 14h20M8 2v20M14 2v20"/></svg>
+            §1 · Geometría de la malla
+          </div>
+          <div class="form-row" style="margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Forma de la malla</label>
+              <select class="select-input" id="m-forma" onchange="mallaFormaChange()">
+                <option value="1">1 — Rectangular / Cuadrada</option>
+                <option value="2">2 — Triangular Equilátero</option>
+                <option value="3">3 — Triangular Isósceles</option>
+                <option value="4">4 — Triangular Rectángulo</option>
+                <option value="5">5 — Escaleno</option>
+                <option value="6">6 — Forma L</option>
+                <option value="7">7 — Forma T</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Profundidad de enterramiento h (m)</label>
+              <input class="form-input" type="number" id="m-h" value="0.5" step="0.05" min="0.1">
+            </div>
+          </div>
+
+          <!-- Forma 1: Rectangular/Cuadrada -->
+          <div id="geo-rect" class="malla-geo-block">
+            <div class="form-row" style="margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Lx — Ancho (m)</label><input class="form-input" type="number" id="m-Lx" value="80" step="1" min="1" onchange="mallaLoadEspaciamientos()"></div>
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Ly — Largo (m)</label><input class="form-input" type="number" id="m-Ly" value="60" step="1" min="1" onchange="mallaLoadEspaciamientos()"></div>
+            </div>
+          </div>
+
+          <!-- Forma 2: Equilátero -->
+          <div id="geo-equi" class="malla-geo-block" style="display:none;">
+            <div class="form-row" style="margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">L — Lado (m)</label><input class="form-input" type="number" id="m-L" value="60" step="1" min="1" onchange="mallaLoadEspaciamientos()"></div>
+            </div>
+          </div>
+
+          <!-- Forma 3: Isósceles -->
+          <div id="geo-iso" class="malla-geo-block" style="display:none;">
+            <div class="form-row" style="margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Lb — Base (m)</label><input class="form-input" type="number" id="m-Lb" value="60" step="1" min="1" onchange="mallaLoadEspaciamientos()"></div>
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Li — Lado igual (m)</label><input class="form-input" type="number" id="m-Li" value="50" step="1" min="1" onchange="mallaLoadEspaciamientos()"></div>
+            </div>
+          </div>
+
+          <!-- Forma 4: Tri. Rectángulo -->
+          <div id="geo-trirect" class="malla-geo-block" style="display:none;">
+            <div class="form-row" style="margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Lx — Cateto horizontal (m)</label><input class="form-input" type="number" id="m-Lx4" value="60" step="1" min="1" onchange="mallaLoadEspaciamientos()"></div>
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Ly — Cateto vertical (m)</label><input class="form-input" type="number" id="m-Ly4" value="45" step="1" min="1" onchange="mallaLoadEspaciamientos()"></div>
+            </div>
+          </div>
+
+          <!-- Forma 5: Escaleno -->
+          <div id="geo-esc" class="malla-geo-block" style="display:none;">
+            <div class="form-row" style="margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">La (m)</label><input class="form-input" type="number" id="m-La" value="60" step="1" min="1" onchange="mallaLoadEspaciamientos()"></div>
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Lb_e (m)</label><input class="form-input" type="number" id="m-Lb_e" value="50" step="1" min="1" onchange="mallaLoadEspaciamientos()"></div>
+            </div>
+            <div class="form-row" style="margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Lc_e (m)</label><input class="form-input" type="number" id="m-Lc_e" value="40" step="1" min="1" onchange="mallaLoadEspaciamientos()"></div>
+            </div>
+          </div>
+
+          <!-- Forma 6: L -->
+          <div id="geo-L" class="malla-geo-block" style="display:none;">
+            <div class="form-row" style="margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Lx — Ancho total (m)</label><input class="form-input" type="number" id="m-Lx6" value="80" step="1" min="1" onchange="mallaLoadEspaciamientos()"></div>
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Ly — Largo total (m)</label><input class="form-input" type="number" id="m-Ly6" value="60" step="1" min="1" onchange="mallaLoadEspaciamientos()"></div>
+            </div>
+            <div class="form-row" style="margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Lx1 — Recorte ancho (m)</label><input class="form-input" type="number" id="m-Lx1" value="30" step="1" min="0"></div>
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Ly1 — Recorte largo (m)</label><input class="form-input" type="number" id="m-Ly1" value="20" step="1" min="0"></div>
+            </div>
+          </div>
+
+          <!-- Forma 7: T -->
+          <div id="geo-T" class="malla-geo-block" style="display:none;">
+            <div class="form-row" style="margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Lx — Ancho total (m)</label><input class="form-input" type="number" id="m-Lx7" value="80" step="1" min="1" onchange="mallaLoadEspaciamientos()"></div>
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Ly — Largo total (m)</label><input class="form-input" type="number" id="m-Ly7" value="60" step="1" min="1" onchange="mallaLoadEspaciamientos()"></div>
+            </div>
+            <div class="form-row" style="margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Lx1 — Recorte 1 ancho (m)</label><input class="form-input" type="number" id="m-Lx1b" value="20" step="1" min="0"></div>
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Ly1 — Recorte 1 largo (m)</label><input class="form-input" type="number" id="m-Ly1b" value="20" step="1" min="0"></div>
+            </div>
+            <div class="form-row" style="margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Lx2 — Recorte 2 ancho (m)</label><input class="form-input" type="number" id="m-Lx2" value="20" step="1" min="0"></div>
+              <div class="form-group" style="margin-bottom:0;"><label class="form-label">Ly2 — Recorte 2 largo (m)</label><input class="form-input" type="number" id="m-Ly2" value="20" step="1" min="0"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- §2 ESPACIAMIENTOS -->
+        <div class="form-card">
+          <div class="form-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+            §2 · Espaciamientos de conductores
+          </div>
+          <div id="esp-loading" style="font-size:0.78rem;color:var(--text-light);padding:6px 0;display:none;">Cargando espaciamientos válidos…</div>
+
+          <!-- Formas 1,6,7 -->
+          <div id="esp-rect" class="malla-esp-block">
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Dx — Espaciamiento entre conductores paralelos al eje X (m)</label>
+                <select class="select-input" id="m-Dx"><option value="">— seleccione geometría primero —</option></select>
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Dy — Espaciamiento entre conductores paralelos al eje Y (m)</label>
+                <select class="select-input" id="m-Dy"><option value="">— seleccione geometría primero —</option></select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Forma 2 -->
+          <div id="esp-equi" class="malla-esp-block" style="display:none;">
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">D — Espaciamiento (m)</label>
+                <select class="select-input" id="m-D"><option value="">— ingrese L primero —</option></select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Forma 3 -->
+          <div id="esp-iso" class="malla-esp-block" style="display:none;">
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Db — Espaciamiento base (m)</label>
+                <select class="select-input" id="m-Db"><option value="">— ingrese Lb primero —</option></select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formas 4, 5 -->
+          <div id="esp-D1" class="malla-esp-block" style="display:none;">
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">D1 — Espaciamiento principal (m)</label>
+                <select class="select-input" id="m-D1"><option value="">— ingrese dimensiones primero —</option></select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- §3 SUELO -->
+        <div class="form-card">
+          <div class="form-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22V12m0 0C12 7 7 4 2 6m10 6c0-5 5-8 10-6"/></svg>
+            §3 · Parámetros del suelo
+          </div>
+          <div class="form-row" style="margin-bottom:8px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">
+                ρ — Resistividad del suelo (Ω·m)
+                <span class="tooltip-wrap">
+                  <svg class="tooltip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span class="tooltip-text">Este valor es una estimación preliminar basada en la clasificación de suelo obtenida en la validación de ubicación. Debe ser verificado mediante mediciones experimentales en sitio según IEEE Std 81.</span>
+                </span>
+              </label>
+              <input class="form-input" type="number" id="m-rho" value="100" step="1" min="1">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">
+                Clasificación IEEE 80
+                <span class="tooltip-wrap">
+                  <svg class="tooltip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span class="tooltip-text">Clasificaciones referenciales de suelo según IEEE 80 para estimación preliminar. No sustituyen mediciones en campo.</span>
+                </span>
+              </label>
+              <select class="form-input" id="m-rho-clase" onchange="mallaRhoClaseChange(this.value)">
+                <option value="">— Sin clasificar —</option>
+                <option value="10">Suelo Orgánico Húmedo (10 Ω·m)</option>
+                <option value="100">Suelo Húmedo (100 Ω·m)</option>
+                <option value="1000">Suelo Seco (1 000 Ω·m)</option>
+                <option value="10000">Roca (10 000 Ω·m)</option>
+              </select>
+            </div>
+          </div>
+          <div id="m-rho-nota" style="font-size:0.68rem;color:var(--text-light);margin-bottom:10px;display:none;"></div>
+        </div>
+
+        <!-- §4 VARILLAS -->
+        <div class="form-card">
+          <div class="form-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="22"/><path d="M8 6h8M8 10h8"/></svg>
+            §4 · Varillas de aterrizaje
+          </div>
+          <div class="form-row" style="margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Modelo de varilla</label>
+              <select class="select-input" id="m-varilla-modelo" onchange="mallaVarillaChange()">
+                <option value="Copperweld 1/2&quot;">Copperweld 1/2" — ø12.7 mm, 1.50 m</option>
+                <option value="Copperweld 5/8&quot;" selected>Copperweld 5/8" — ø15.9 mm, 1.80 m</option>
+                <option value="Copperweld 3/4&quot;">Copperweld 3/4" — ø19.1 mm, 2.40 m</option>
+                <option value="Galvanized 3/4&quot;">Galvanized 3/4" — ø19.1 mm, 2.44 m</option>
+                <option value="Copper 1/2&quot;">Copper 1/2" — ø12.7 mm, 1.20 m</option>
+                <option value="Copper 5/8&quot;">Copper 5/8" — ø15.9 mm, 1.50 m</option>
+                <option value="Standard 8ft">Standard 8ft — ø15.9 mm, 2.44 m</option>
+                <option value="Standard 10ft">Standard 10ft — ø15.9 mm, 3.05 m</option>
+                <option value="Standard 12ft">Standard 12ft — ø19.1 mm, 3.66 m</option>
+                <option value="custom">Personalizado — ingresar manualmente</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Ubicación de varillas</label>
+              <select class="select-input" id="m-uv" onchange="mallaUvChange()">
+                <option value="0">0 — Sin varillas</option>
+                <option value="1">1 — Solo en las esquinas</option>
+                <option value="2" selected>2 — En todo el perímetro</option>
+                <option value="3">3 — En todas las intersecciones</option>
+                <option value="4">4 — Configuración personalizada</option>
+              </select>
+            </div>
+          </div>
+          <!-- Canvas interactivo de varillas personalizadas -->
+          <div id="m-uv-custom-wrap" style="display:none;margin-bottom:14px;padding:12px 14px;background:var(--blue-pale);border:1px solid var(--grey-line);border-radius:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span style="font-size:0.78rem;color:var(--text-light);">Haz clic en los nodos para colocar (<span style="color:#F5A623;">●</span>) o quitar varillas</span>
+              <span id="m-uv-nr-display" style="font-size:0.82rem;font-weight:700;color:var(--accent);">Nr = 0</span>
+            </div>
+            <div id="m-uv-svg-wrap" style="line-height:0;overflow:auto;"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Lr — Longitud de varilla (m)</label>
+              <input class="form-input" type="number" id="m-Lr" value="1.80" step="0.01" min="0.01" readonly>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">b — Radio de varilla (m)</label>
+              <input class="form-input" type="number" id="m-b" value="0.00795" step="0.00001" min="0.0001" readonly>
+            </div>
+          </div>
+        </div>
+
+        <!-- §5 CONDUCTOR -->
+        <div class="form-card">
+          <div class="form-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20"/><circle cx="12" cy="12" r="3"/></svg>
+            §5 · Conductor y condiciones de falla
+          </div>
+          <div class="form-row" style="margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Material del conductor</label>
+              <select class="select-input" id="m-material">
+                <option value="1" selected>1 — Cobre recocido (soft-drawn)</option>
+                <option value="2">2 — Cobre comercial (hard-drawn)</option>
+                <option value="3">3 — Cu-cladded 40% IACS</option>
+                <option value="4">4 — Cu-cladded 30% IACS</option>
+                <option value="5">5 — Cu-cladded 17% IACS</option>
+                <option value="6">6 — Acero-Al cladded 20.3% IACS</option>
+                <option value="7">7 — Acero 1020</option>
+                <option value="8">8 — Acero inox. cladded 9.8% IACS</option>
+                <option value="9">9 — Acero galvanizado</option>
+                <option value="10">10 — Acero inoxidable 304</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">I_falla — Corriente de falla (kA)</label>
+              <input class="form-input" type="number" id="m-I_falla" value="20" step="0.01" min="0.01">
+            </div>
+          </div>
+          <div class="form-row" style="margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">tc — Duración térmica (s)</label>
+              <input class="form-input" type="number" id="m-tc" value="0.5" step="0.1" min="0.01">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">tf — Duración asimetría (s)</label>
+              <input class="form-input" type="number" id="m-tf" value="0.5" step="0.1" min="0.01">
+            </div>
+          </div>
+          <div class="form-row" style="margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">X/R — Relación X/R</label>
+              <input class="form-input" type="number" id="m-XR" value="10" step="1" min="0">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Sf — Factor de división de corriente</label>
+              <input class="form-input" type="number" id="m-Sf" value="1.0" step="0.05" min="0.1" max="1">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Tamb — Temperatura ambiente (°C) <span id="m-Tamb-fuente" style="font-weight:400;color:var(--text-light);font-size:0.75em;display:none;">· tomada de la ubicación</span></label>
+              <input class="form-input" type="number" id="m-Tamb" value="40" step="0.1">
+            </div>
+          </div>
+          <!-- Selector método Rg — visible solo cuando Nr ≥ 1 -->
+          <div id="m-metodo-rg-wrap" style="display:none;margin-top:14px;padding:10px 12px;background:var(--blue-pale);border:1px solid var(--grey-line);border-radius:8px;">
+            <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.04em;color:var(--text-light);margin-bottom:8px;text-transform:uppercase;">Método de cálculo de Rg</div>
+            <div style="display:flex;gap:20px;align-items:center;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;cursor:pointer;">
+                <input type="radio" name="metodo_rg" id="m-metodo-rg-sverak" value="sverak">
+                Sverak
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;cursor:pointer;">
+                <input type="radio" name="metodo_rg" id="m-metodo-rg-schwarz" value="schwarz" checked>
+                Schwarz
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- §6 SUPERFICIE -->
+        <div class="form-card">
+          <div class="form-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="14" width="20" height="8" rx="1"/><path d="M2 14l4-8h12l4 8"/></svg>
+            §6 · Material superficial y tensiones tolerables
+          </div>
+          <div class="form-row" style="margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Material superficial (Tabla 7)</label>
+              <select class="select-input" id="m-mat-sup" onchange="mallaSuperChange()">
+                <option value="1">1 — Crusher run granite (N.C.)</option>
+                <option value="2">2 — 1.5 in crusher run granite (Ga.)</option>
+                <option value="3">3 — 0.75-1 in granite with fines (Calif.)</option>
+                <option value="4" selected>4 — #4 washed granite (Ga.)</option>
+                <option value="5">5 — #3 washed granite (Ga.)</option>
+                <option value="6">6 — Washed limestone (Mich.)</option>
+                <option value="7">7 — Washed granite ~0.75 in gravel</option>
+                <option value="8">8 — Washed granite, pea gravel</option>
+                <option value="9">9 — #57 washed granite (N.C.)</option>
+                <option value="10">10 — Asphalt</option>
+                <option value="11">11 — Concrete</option>
+                <option value="12">12 — Custom (definido por usuario)</option>
+              </select>
+              <button type="button" id="m-mat-ref-btn" onclick="mallaToggleRefTable()"
+                style="margin-top:6px;background:none;border:none;padding:0;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;color:var(--blue-mid);font-family:inherit;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span id="m-mat-ref-btn-label">Ver tabla de referencia</span>
+              </button>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Condición</label>
+              <select class="select-input" id="m-condicion" onchange="mallaSuperChange()">
+                <option value="Dry">Dry (seco)</option>
+                <option value="Wet" selected>Wet (húmedo)</option>
+              </select>
+            </div>
+          </div>
+          <!-- Tabla de referencia colapsable Tabla 7 -->
+          <div id="m-mat-ref-panel" style="display:none;margin-bottom:14px;">
+            <div style="border:1px solid var(--grey-line);border-radius:var(--radius-md);overflow:hidden;">
+              <div style="background:var(--grey-bg);padding:8px 14px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-light);border-bottom:1px solid var(--grey-line);">
+                Tabla 7 — Resistividad de materiales superficiales (IEEE 80-2013)
+              </div>
+              <div style="overflow-x:auto;">
+                <table id="m-mat-ref-table" style="width:100%;border-collapse:collapse;font-size:0.74rem;">
+                  <thead>
+                    <tr style="background:var(--grey-bg);">
+                      <th style="padding:7px 12px;text-align:left;border-bottom:1px solid var(--grey-line);color:var(--text-mid);font-weight:600;">#</th>
+                      <th style="padding:7px 12px;text-align:left;border-bottom:1px solid var(--grey-line);color:var(--text-mid);font-weight:600;">Material</th>
+                      <th style="padding:7px 12px;text-align:center;border-bottom:1px solid var(--grey-line);color:var(--text-mid);font-weight:600;">Condición</th>
+                      <th style="padding:7px 12px;text-align:center;border-bottom:1px solid var(--grey-line);color:var(--text-mid);font-weight:600;">Valor de uso</th>
+                      <th style="padding:7px 12px;text-align:right;border-bottom:1px solid var(--grey-line);color:var(--text-mid);font-weight:600;">ρs (Ω·m)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="m-mat-ref-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row" style="margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Valor de uso</label>
+              <select class="select-input" id="m-val-uso" onchange="mallaSuperChange()">
+                <option value="Mínimo" selected>Mínimo</option>
+                <option value="Máximo">Máximo</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;" id="m-rho-custom-wrap" style="display:none;">
+              <label class="form-label">ρs custom (Ω·m)</label>
+              <input class="form-input" type="number" id="m-rho-custom" value="3000" step="100" min="1">
+            </div>
+            <div class="form-group" style="margin-bottom:0;" id="m-rho-display-wrap">
+              <label class="form-label">ρs del material — <span id="m-rho-display-cond" style="color:var(--text-light);font-weight:400;"></span></label>
+              <input class="form-input" type="text" id="m-rho-display" disabled
+                style="background:var(--grey-bg);color:var(--text-mid);cursor:default;">
+            </div>
+          </div>
+          <div class="form-row" style="margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">hs — Espesor capa superficial (m)</label>
+              <input class="form-input" type="number" id="m-hs" value="0.100" step="0.001" min="0">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">ts — Duración de falla (s)</label>
+              <input class="form-input" type="number" id="m-ts" value="0.5" step="0.1" min="0.01">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Peso corporal de referencia</label>
+              <select class="select-input" id="m-peso">
+                <option value="50">50 kg (K = 0.116)</option>
+                <option value="70" selected>70 kg (K = 0.157)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botón calcular -->
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:28px;">
+          <button class="btn btn-primary" id="m-btn-calcular" onclick="mallaCalcular()" style="height:42px;font-size:0.88rem;padding:0 28px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+            Calcular malla
+          </button>
+          <div id="m-calc-spinner" style="display:none;font-size:0.78rem;color:var(--text-light);">Calculando…</div>
+          <div id="m-calc-error" style="display:none;font-size:0.78rem;color:var(--error);"></div>
+        </div>
+
+        <!-- RESULTADOS -->
+        <div id="m-resultados" style="display:none;">
+
+          <!-- Tabla resumen de verificaciones -->
+          <div class="result-table-wrap">
+            <div style="padding:14px 16px 10px;border-bottom:1px solid var(--grey-line);display:flex;align-items:center;gap:8px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:var(--blue-mid);"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+              <span style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-mid);">Verificaciones IEEE 80-2013</span>
+            </div>
+            <table class="result-table">
+              <thead>
+                <tr>
+                  <th>Parámetro</th>
+                  <th>Calculado</th>
+                  <th>Límite</th>
+                  <th>Unidad</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Resistencia de la malla Rg</td>
+                  <td class="mono" id="r-Rg">—</td>
+                  <td class="mono">≤ 1.0</td>
+                  <td class="mono">Ω</td>
+                  <td id="r-Rg-st"><span class="badge-pending">Pendiente</span></td>
+                </tr>
+                <tr>
+                  <td>GPR — Elevación de potencial</td>
+                  <td class="mono" id="r-GPR">—</td>
+                  <td class="mono" id="r-GPR-lim">—</td>
+                  <td class="mono">V</td>
+                  <td id="r-GPR-st"><span class="badge-pending">Pendiente</span></td>
+                </tr>
+                <tr>
+                  <td>Em — Tensión de malla (contacto)</td>
+                  <td class="mono" id="r-Em">—</td>
+                  <td class="mono" id="r-Em-lim">—</td>
+                  <td class="mono">V</td>
+                  <td id="r-Em-st"><span class="badge-pending">Pendiente</span></td>
+                </tr>
+                <tr>
+                  <td>Es — Tensión de paso</td>
+                  <td class="mono" id="r-Es">—</td>
+                  <td class="mono" id="r-Es-lim">—</td>
+                  <td class="mono">V</td>
+                  <td id="r-Es-st"><span class="badge-pending">Pendiente</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Detalle por sección -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+
+            <!-- §2 Calibre conductor -->
+            <div class="form-card" style="margin-bottom:0;">
+              <div class="form-card-title">§2 · Calibre del conductor</div>
+              <div id="r-sec2" style="font-size:0.82rem;line-height:1.8;"></div>
+            </div>
+
+            <!-- §3 Geometría -->
+            <div class="form-card" style="margin-bottom:0;">
+              <div class="form-card-title">§3 · Geometría y longitudes</div>
+              <div id="r-sec3" style="font-size:0.82rem;line-height:1.8;"></div>
+            </div>
+
+            <!-- §4 Corrientes -->
+            <div class="form-card" style="margin-bottom:0;">
+              <div class="form-card-title">§4 · Corrientes de diseño</div>
+              <div id="r-sec4" style="font-size:0.82rem;line-height:1.8;"></div>
+            </div>
+
+            <!-- §5 Resistencia Rg -->
+            <div class="form-card" style="margin-bottom:0;">
+              <div class="form-card-title">§5 · Resistencia Rg</div>
+              <div id="r-sec5" style="font-size:0.82rem;line-height:1.8;"></div>
+            </div>
+
+            <!-- §6 Tensiones admisibles -->
+            <div class="form-card" style="margin-bottom:0;">
+              <div class="form-card-title">§6 · Tensiones admisibles</div>
+              <div id="r-sec6" style="font-size:0.82rem;line-height:1.8;"></div>
+            </div>
+
+            <!-- §8 Em y Es -->
+            <div class="form-card" style="margin-bottom:0;">
+              <div class="form-card-title">§8 · Voltajes Em y Es</div>
+              <div id="r-sec8" style="font-size:0.82rem;line-height:1.8;"></div>
+            </div>
+
+          </div>
+
+          <!-- ── VISUALIZACIÓN 2D / 3D ───────────────────────────────── -->
+          <div class="form-card" style="margin-top:4px;">
+            <div class="form-card-title" style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="display:flex;align-items:center;gap:8px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M2 8h20M2 14h20M8 2v20M14 2v20"/></svg>
+                Visualización de la malla
+              </span>
+              <div style="display:flex;gap:6px;">
+                <button id="viz-tab-2d" class="btn btn-primary" style="height:28px;font-size:0.72rem;padding:0 14px;" onclick="mallaSwitchTab('2d')">Vista 2D</button>
+                <button id="viz-tab-3d" class="btn btn-secondary" style="height:28px;font-size:0.72rem;padding:0 14px;" onclick="mallaSwitchTab('3d')">Vista 3D</button>
+              </div>
+            </div>
+            <div id="viz-2d" style="width:100%;height:480px;"></div>
+            <div id="viz-3d" style="width:100%;height:480px;display:none;"></div>
+          </div>
+
+          <!-- ── RECOMENDACIONES ───────────────────────────────────────── -->
+          <div id="m-rec-wrap" style="margin-top:4px;display:none;"></div>
+
+        </div><!-- /m-resultados -->
+
+          <!-- ── HISTORIAL DE ITERACIONES ──────────────────────────────── -->
+          <div id="m-historial-wrap" style="display:none;margin-top:16px;">
+            <div class="form-card" style="padding:0;overflow:hidden;">
+              <div class="form-card-title" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--grey-line);">
+                <span style="display:flex;align-items:center;gap:8px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                  Historial de iteraciones
+                </span>
+                <span id="m-hist-count" style="font-size:0.72rem;color:var(--text-light);font-weight:400;"></span>
+              </div>
+              <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
+                  <thead>
+                    <tr style="background:var(--grey-bg);color:var(--text-mid);text-transform:uppercase;font-size:0.65rem;letter-spacing:0.05em;">
+                      <th style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--grey-line);">#</th>
+                      <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--grey-line);">Dimensiones</th>
+                      <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--grey-line);">D (m)</th>
+                      <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--grey-line);">h (m)</th>
+                      <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--grey-line);">Lr (m)</th>
+                      <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--grey-line);">Nr</th>
+                      <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--grey-line);">Sf</th>
+                      <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--grey-line);">tf (s)</th>
+                      <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--grey-line);">hs (m)</th>
+                      <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--grey-line);">Rg (Ω)</th>
+                      <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--grey-line);">GPR (V)</th>
+                      <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--grey-line);">Em (V)</th>
+                      <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--grey-line);">Es (V)</th>
+                      <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--grey-line);">Etouch (V)</th>
+                      <th style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--grey-line);">Estep (V)</th>
+                      <th style="padding:8px 12px;text-align:center;border-bottom:1px solid var(--grey-line);">Estado</th>
+                      <th style="padding:8px 10px;border-bottom:1px solid var(--grey-line);"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="m-hist-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div><!-- /m-historial-wrap -->
+
+      </div><!-- /page-malla -->
+
+      <!-- PAGE: EXPORTAR -->
+      <div id="page-exportar" class="section-page">
+        <div class="page-header">
+          <h1>Exportar reporte</h1>
+          <p>Genere y descargue el reporte técnico del proyecto</p>
+        </div>
+
+        <div class="export-card" id="ec-pdf">
+          <div class="ec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg></div>
+          <div class="ec-info">
+            <div class="ec-title">Reporte técnico PDF</div>
+            <div class="ec-desc">Tabla del diseño final aprobado con encabezado del proyecto y fecha</div>
+          </div>
+          <button id="btn-export-pdf" class="btn btn-primary" onclick="exportarPDF()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Generar PDF
+          </button>
+        </div>
+
+        <div class="export-card">
+          <div class="ec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h7"/></svg></div>
+          <div class="ec-info"><div class="ec-title">Reporte en texto plano (TXT)</div><div class="ec-desc">Archivo de texto con los valores principales del diseño</div></div>
+          <button class="btn btn-secondary" onclick="exportTXT()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exportar TXT
+          </button>
+        </div>
+
+        <div class="export-card">
+          <div class="ec-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>
+          <div class="ec-info"><div class="ec-title">Guardar proyecto (.json)</div><div class="ec-desc">Exporta todos los datos del proyecto en formato JSON para recuperar el estado</div></div>
+          <button class="btn btn-accent" onclick="saveProject()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Guardar .json
+          </button>
+        </div>
+      </div>
+
+    </div><!-- app-content -->
+  </main>
+</div>
+
+<!-- ============================================================
+     MODAL: NUEVO PROYECTO
+     ============================================================ -->
+<div id="modal-new-project" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Nuevo proyecto</h2>
+      <button class="modal-close-btn" onclick="closeModal('modal-new-project')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nombre del proyecto *</label>
+        <input class="form-input" id="new-proj-name" placeholder="Ej: SE_Atlantico_2024">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo de instalación</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+          <span class="field-tag"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/></svg>Subestación eléctrica</span>
+          <span style="font-size:0.73rem;color:var(--text-light);">Fijo — único tipo soportado</span>
+        </div>
+      </div>
+      <div class="section-divider"><span>Ubicación del proyecto</span></div>
+      <p style="font-size:0.75rem;color:var(--text-light);margin-bottom:14px;display:flex;align-items:center;gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Solo se permiten ubicaciones dentro de la región Caribe colombiana.
+      </p>
+      <!-- SVG selector de departamento -->
+      <div class="map-area" id="map-area" style="height:340px;">
+        <div class="map-svg-wrap" id="map-svg-wrap">
+          <svg id="colombia-map" viewBox="0 0 320 240" width="100%" height="100%" style="cursor:crosshair;" xmlns="http://www.w3.org/2000/svg">
+            <rect width="320" height="240" fill="#C0D8F0"/>
+            <path id="dept-la-guajira" d="M210,20 L240,18 L260,30 L265,55 L255,70 L240,65 L225,60 L210,70 L200,60 L195,45 Z" fill="#8FB3E8" stroke="#fff" stroke-width="1.5" class="dept-path" data-dept="La Guajira" style="cursor:pointer;"/>
+            <path id="dept-magdalena"  d="M175,50 L195,45 L210,70 L200,90 L185,95 L170,100 L155,85 L160,65 Z" fill="#8FB3E8" stroke="#fff" stroke-width="1.5" class="dept-path" data-dept="Magdalena" style="cursor:pointer;"/>
+            <path id="dept-atlantico"  d="M150,85 L165,80 L175,100 L160,110 L148,100 Z" fill="#8FB3E8" stroke="#fff" stroke-width="1.5" class="dept-path" data-dept="Atlántico" style="cursor:pointer;"/>
+            <path id="dept-bolivar"    d="M120,90 L148,100 L160,110 L155,135 L135,150 L115,145 L100,130 L108,105 Z" fill="#8FB3E8" stroke="#fff" stroke-width="1.5" class="dept-path" data-dept="Bolívar" style="cursor:pointer;"/>
+            <path id="dept-sucre"      d="M90,100 L108,105 L100,130 L85,135 L75,120 L80,105 Z" fill="#8FB3E8" stroke="#fff" stroke-width="1.5" class="dept-path" data-dept="Sucre" style="cursor:pointer;"/>
+            <path id="dept-cordoba"    d="M60,95 L80,105 L75,120 L85,135 L70,148 L50,145 L40,125 L45,105 Z" fill="#8FB3E8" stroke="#fff" stroke-width="1.5" class="dept-path" data-dept="Córdoba" style="cursor:pointer;"/>
+            <path id="dept-cesar"      d="M200,90 L225,85 L240,100 L235,130 L215,140 L195,130 L185,115 L185,95 Z" fill="#8FB3E8" stroke="#fff" stroke-width="1.5" class="dept-path" data-dept="Cesar" style="cursor:pointer;"/>
+            <text x="232" y="48"  font-size="7.5" fill="#0A3D91" font-family="DM Sans, sans-serif" font-weight="600" text-anchor="middle">La Guajira</text>
+            <text x="183" y="78"  font-size="7.5" fill="#0A3D91" font-family="DM Sans, sans-serif" font-weight="600" text-anchor="middle">Magdalena</text>
+            <text x="154" y="98"  font-size="6.5" fill="#0A3D91" font-family="DM Sans, sans-serif" font-weight="600" text-anchor="middle">Atlántico</text>
+            <text x="130" y="122" font-size="7.5" fill="#0A3D91" font-family="DM Sans, sans-serif" font-weight="600" text-anchor="middle">Bolívar</text>
+            <text x="88"  y="118" font-size="7"   fill="#0A3D91" font-family="DM Sans, sans-serif" font-weight="600" text-anchor="middle">Sucre</text>
+            <text x="62"  y="122" font-size="7.5" fill="#0A3D91" font-family="DM Sans, sans-serif" font-weight="600" text-anchor="middle">Córdoba</text>
+            <text x="213" y="115" font-size="7.5" fill="#0A3D91" font-family="DM Sans, sans-serif" font-weight="600" text-anchor="middle">Cesar</text>
+
+            <g id="map-selected-pin" display="none">
+              <circle id="map-pin-circle" cx="0" cy="0" r="5" fill="#F5C400" stroke="#0A3D91" stroke-width="1.5"/>
+              <line id="map-pin-line" x1="0" y1="0" x2="0" y2="12" stroke="#0A3D91" stroke-width="1.2"/>
+            </g>
+          </svg>
+        </div>
+        <div class="map-overlay-msg">Haga clic en un departamento para seleccionar ubicación</div>
+      </div>
+
+      <!-- Leaflet map — aparece después de validar -->
+      <div id="leaflet-map-wrap" style="display:none;border-radius:var(--radius-lg);overflow:hidden;height:260px;margin-bottom:14px;border:1px solid var(--grey-line);position:relative;">
+        <div id="leaflet-map" style="width:100%;height:100%;"></div>
+        <button onclick="resetToSvgMap()" style="position:absolute;top:8px;right:8px;z-index:1000;background:var(--white);border:1px solid var(--grey-line);border-radius:var(--radius-md);padding:4px 10px;font-size:0.72rem;font-family:var(--font-ui);cursor:pointer;color:var(--text-mid);box-shadow:var(--shadow-sm);">
+          ← Cambiar ubicación
+        </button>
+      </div>
+      <div class="form-row" style="margin-bottom:14px;">
+        <div class="form-group" style="margin-bottom:0;"><label class="form-label">Latitud (°N)</label><input class="form-input" id="new-lat" type="number" step="0.0001" placeholder="10.9685" min="8.0" max="12.5"></div>
+        <div class="form-group" style="margin-bottom:0;"><label class="form-label">Longitud (°W)</label><input class="form-input" id="new-lon" type="number" step="0.0001" placeholder="-74.7813" min="-76.5" max="-72.0"></div>
+      </div>
+      <button class="btn btn-accent" onclick="validarUbicacion()" style="margin-bottom:14px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
+        Validar ubicación
+      </button>
+      <div class="location-result" id="location-result">
+        <h4 id="loc-result-title"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/></svg>Ubicación validada</h4>
+        <div id="loc-result-body" class="result-grid"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-new-project')">Cancelar</button>
+      <button class="btn btn-primary" onclick="crearProyecto()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Crear proyecto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: CONFIGURACIÓN
+     ============================================================ -->
+<div id="modal-config" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Configuración</h2>
+      <button class="modal-close-btn" onclick="closeModal('modal-config')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:24px;">
+        <div class="config-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>Apariencia</div>
+        <div class="config-row">
+          <div><div class="config-row-label">Tema de color</div></div>
+          <div class="config-row-control"><div class="toggle-group">
+            <button class="toggle-btn active" id="theme-light-btn" onclick="setTheme('light')">Claro</button>
+            <button class="toggle-btn" id="theme-dark-btn" onclick="setTheme('dark')">Oscuro</button>
+          </div></div>
+        </div>
+      </div>
+      <div style="margin-bottom:24px;">
+        <div class="config-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Formato numérico</div>
+        <div class="config-row">
+          <div><div class="config-row-label">Decimales</div><div class="config-row-desc">Número de decimales en resultados</div></div>
+          <div class="config-row-control"><input class="spinner-input" type="number" id="cfg-decimals" value="4" min="1" max="8"></div>
+        </div>
+        <div class="config-row">
+          <div><div class="config-row-label">Separador decimal</div></div>
+          <div class="config-row-control"><div class="toggle-group">
+            <button class="toggle-btn active" onclick="toggleDecSep(this, '.')">Punto (.)</button>
+            <button class="toggle-btn" onclick="toggleDecSep(this, ',')">Coma (,)</button>
+          </div></div>
+        </div>
+      </div>
+      <div style="margin-bottom:24px;">
+        <div class="config-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportación</div>
+        <div class="config-row">
+          <div><div class="config-row-label">Formato de reporte</div></div>
+          <div class="config-row-control"><div class="toggle-group">
+            <button class="toggle-btn active" onclick="toggleExportFmt(this, 'pdf')">PDF</button>
+            <button class="toggle-btn" onclick="toggleExportFmt(this, 'txt')">TXT</button>
+          </div></div>
+        </div>
+        <div class="config-row">
+          <div><div class="config-row-label">Nombre por defecto del archivo</div></div>
+          <div class="config-row-control"><input class="form-input" id="cfg-filename" value="TerraShield_Reporte" style="width:220px;height:34px;"></div>
+        </div>
+      </div>
+      <div>
+        <div class="config-section-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Ayuda</div>
+        <div class="config-row">
+          <div><div class="config-row-label">Manual del usuario</div><div class="config-row-desc">Abrir documentación e instructivo de uso</div></div>
+          <div class="config-row-control"><button class="btn btn-ghost" onclick="closeModal('modal-config'); openModal('modal-manual');">Ver manual</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="resetConfig()">Restablecer valores</button>
+      <button class="btn btn-primary" onclick="saveConfig()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: MANUAL / AYUDA
+     ============================================================ -->
+<div id="modal-manual" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Manual de usuario — TerraShield</h2>
+      <button class="modal-close-btn" onclick="closeModal('modal-manual')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="info-banner" style="margin-bottom:18px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Versión de documentación: v1.0.0 — Esta es una vista previa del manual. La versión completa será un PDF adjunto.
+      </div>
+      <h3 style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:12px;">Tabla de contenidos</h3>
+      <ul class="manual-toc">
+        <li><span class="toc-num">01</span> <a href="#">Descripción general del software</a></li>
+        <li><span class="toc-num">02</span> <a href="#">Requisitos del sistema y configuración inicial</a></li>
+        <li><span class="toc-num">03</span> <a href="#">Creación y gestión de proyectos</a></li>
+        <li><span class="toc-num">04</span> <a href="#">Restricción geográfica — Región Caribe de Colombia</a></li>
+        <li><span class="toc-num">05</span> <a href="#">Ingreso de datos técnicos de la subestación</a></li>
+        <li><span class="toc-num">06</span> <a href="#">Módulo de apantallamiento (IEEE Std 998 / IEC 62305)</a></li>
+        <li><span class="toc-num">07</span> <a href="#">Módulo de malla de puesta a tierra (IEEE Std 80)</a></li>
+        <li><span class="toc-num">09</span> <a href="#">Generación de reportes técnicos</a></li>
+        <li><span class="toc-num">10</span> <a href="#">Integración con backend Python</a></li>
+        <li><span class="toc-num">11</span> <a href="#">Formato de archivo de proyecto (.json)</a></li>
+        <li><span class="toc-num">12</span> <a href="#">Glosario técnico</a></li>
+      </ul>
+      <div style="margin-top:18px;padding:14px;background:var(--grey-bg);border-radius:var(--radius-md);font-size:0.78rem;color:var(--text-mid);line-height:1.6;">
+        <strong style="color:var(--text-dark);">Normas de referencia:</strong><br>
+        IEEE Std 998 — Guide for Direct Lightning Stroke Shielding of Substations<br>
+        IEEE Std 80 — Guide for Safety in AC Substation Grounding<br>
+        IEC 62305 — Protection against lightning<br>
+        ICONTEC NTC 2050 — Código Eléctrico Colombiano
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-manual')">Cerrar</button>
+      <button class="btn btn-primary" onclick="showToast('Descargando manual completo...', 'info')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Descargar PDF
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input -->
+<input type="file" id="file-input-project" accept=".json" style="display:none" onchange="handleProjectFile(event)">
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Scripts — orden importante: app.js primero, location_validation.js después -->
+<script src="app.js"></script>
+<script src="location_validation.js"></script>
+<script src="apantallamiento.js"></script>
+
+<script>
+/* =============================================
+   MALLA DE PUESTA A TIERRA — IEEE 80-2013
+   ============================================= */
+
+/* Detecta si se accede como archivo local (file://) o desde el servidor */
+const MALLA_DESDE_SERVIDOR = location.protocol !== 'file:';
+
+function mallaCheckServidor() {
+  if (!MALLA_DESDE_SERVIDOR) {
+    showToast(
+      'Abre la app desde el servidor: ejecuta servidor.py y ve a http://localhost:8000',
+      'error'
+    );
+    const err = document.getElementById('m-calc-error');
+    if (err) {
+      err.innerHTML =
+        '⚠ No puedes calcular abriendo el archivo directamente.<br>' +
+        'Ejecuta <strong>servidor.py</strong> (o doble clic en <strong>iniciar.bat</strong>) ' +
+        'y abre <strong>http://localhost:8000</strong> en tu navegador.';
+      err.style.display = '';
+    }
+    return false;
+  }
+  return true;
+}
+
+const VARILLA_DATA = {
+  'Copperweld 1/2"': { diametro_mm: 12.7, Lr: 1.50 },
+  'Copperweld 5/8"': { diametro_mm: 15.9, Lr: 1.80 },
+  'Copperweld 3/4"': { diametro_mm: 19.1, Lr: 2.40 },
+  'Galvanized 3/4"': { diametro_mm: 19.1, Lr: 2.44 },
+  'Copper 1/2"':     { diametro_mm: 12.7, Lr: 1.20 },
+  'Copper 5/8"':     { diametro_mm: 15.9, Lr: 1.50 },
+  'Standard 8ft':    { diametro_mm: 15.9, Lr: 2.44 },
+  'Standard 10ft':   { diametro_mm: 15.9, Lr: 3.05 },
+  'Standard 12ft':   { diametro_mm: 19.1, Lr: 3.66 },
+};
+
+function mallaFormaChange() {
+  const forma = parseInt(document.getElementById('m-forma').value);
+  // Mostrar/ocultar bloques de geometría
+  const geoMap = {
+    1: 'geo-rect', 2: 'geo-equi', 3: 'geo-iso',
+    4: 'geo-trirect', 5: 'geo-esc', 6: 'geo-L', 7: 'geo-T'
+  };
+  Object.values(geoMap).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  const active = geoMap[forma];
+  if (active) document.getElementById(active).style.display = '';
+
+  // Mostrar/ocultar bloques de espaciamiento
+  const espMap = {
+    1: 'esp-rect', 2: 'esp-equi', 3: 'esp-iso',
+    4: 'esp-D1', 5: 'esp-D1', 6: 'esp-rect', 7: 'esp-rect'
+  };
+  ['esp-rect','esp-equi','esp-iso','esp-D1'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  const activeEsp = espMap[forma];
+  if (activeEsp) document.getElementById(activeEsp).style.display = '';
+
+  mallaLoadEspaciamientos();
+  if (parseInt(document.getElementById('m-uv').value) === 4) _mallaUvCustomBuild();
+}
+
+function mallaGeoParams() {
+  const forma = parseInt(document.getElementById('m-forma').value);
+  const p = { forma };
+  if (forma === 1) {
+    p.Lx = parseFloat(document.getElementById('m-Lx').value) || 0;
+    p.Ly = parseFloat(document.getElementById('m-Ly').value) || 0;
+  } else if (forma === 2) {
+    p.L = parseFloat(document.getElementById('m-L').value) || 0;
+  } else if (forma === 3) {
+    p.Lb = parseFloat(document.getElementById('m-Lb').value) || 0;
+    p.Li = parseFloat(document.getElementById('m-Li').value) || 0;
+  } else if (forma === 4) {
+    p.Lx = parseFloat(document.getElementById('m-Lx4').value) || 0;
+    p.Ly = parseFloat(document.getElementById('m-Ly4').value) || 0;
+  } else if (forma === 5) {
+    p.La   = parseFloat(document.getElementById('m-La').value)   || 0;
+    p.Lb_e = parseFloat(document.getElementById('m-Lb_e').value) || 0;
+    p.Lc_e = parseFloat(document.getElementById('m-Lc_e').value) || 0;
+  } else if (forma === 6) {
+    p.Lx = parseFloat(document.getElementById('m-Lx6').value) || 0;
+    p.Ly = parseFloat(document.getElementById('m-Ly6').value) || 0;
+    p.Lx1 = parseFloat(document.getElementById('m-Lx1').value) || 0;
+    p.Ly1 = parseFloat(document.getElementById('m-Ly1').value) || 0;
+  } else if (forma === 7) {
+    p.Lx  = parseFloat(document.getElementById('m-Lx7').value)  || 0;
+    p.Ly  = parseFloat(document.getElementById('m-Ly7').value)  || 0;
+    p.Lx1 = parseFloat(document.getElementById('m-Lx1b').value) || 0;
+    p.Ly1 = parseFloat(document.getElementById('m-Ly1b').value) || 0;
+    p.Lx2 = parseFloat(document.getElementById('m-Lx2').value)  || 0;
+    p.Ly2 = parseFloat(document.getElementById('m-Ly2').value)  || 0;
+  }
+  return p;
+}
+
+function mallaLoadEspaciamientos() {
+  if (!MALLA_DESDE_SERVIDOR) {
+    document.getElementById('esp-loading').textContent =
+      'ℹ Inicie servidor.py para cargar espaciamientos automáticamente.';
+    document.getElementById('esp-loading').style.display = '';
+    return;
+  }
+  const geo = mallaGeoParams();
+  const loading = document.getElementById('esp-loading');
+  loading.style.display = '';
+  loading.textContent = 'Cargando espaciamientos válidos…';
+
+  const qs = new URLSearchParams(geo).toString();
+  fetch('/espaciamientos?' + qs)
+    .then(r => r.json())
+    .then(data => {
+      loading.style.display = 'none';
+      if (data.error) {
+        loading.textContent = '⚠ ' + data.error;
+        loading.style.display = '';
+        return;
+      }
+      mallaFillEspaciamientos(geo.forma, data);
+    })
+    .catch(() => {
+      // Flask no está corriendo — mostrar aviso inline, no toast
+      loading.textContent = 'ℹ Inicie servidor.py para cargar espaciamientos automáticamente.';
+      loading.style.display = '';
+    });
+}
+
+function mallaFillEspaciamientos(forma, data) {
+  function fillSelect(id, lista) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = '';
+    if (!lista || lista.length === 0) {
+      sel.innerHTML = '<option value="">Sin valores válidos</option>';
+      return;
+    }
+    lista.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = (typeof v === 'number' ? v.toFixed(1) : v) + ' m';
+      if (String(v) === String(prev)) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    if (!sel.value && lista.length) sel.value = lista[0];
+  }
+
+  if (forma === 1 || forma === 6 || forma === 7) {
+    fillSelect('m-Dx', data.lista_Dx);
+    fillSelect('m-Dy', data.lista_Dy);
+  } else if (forma === 2) {
+    fillSelect('m-D', data.lista_D);
+  } else if (forma === 3) {
+    fillSelect('m-Db', data.lista_Db);
+  } else if (forma === 4 || forma === 5) {
+    fillSelect('m-D1', data.lista_D1);
+  }
+  if (parseInt(document.getElementById('m-uv').value) === 4) _mallaUvCustomBuild();
+}
+
+// ── Configuración personalizada de varillas ───────────────────────────────
+let _uvCustomNodes = new Set(); // node key strings for active rods
+
+// JS equivalent of Python _ceiling(x, sig)
+function _uvCeiling(x, sig) {
+  if (sig <= 0) return x;
+  return Math.ceil(x / sig - 1e-9) * sig;
+}
+
+// Read current form values into a geometry params object
+function _uvReadFormParams() {
+  const forma = parseInt(document.getElementById('m-forma').value);
+  const g = (id, def = 0) => parseFloat(document.getElementById(id)?.value) || def;
+  const p = { forma };
+  if (forma === 1) {
+    p.Lx = g('m-Lx', 30); p.Ly = g('m-Ly', 20);
+    p.Dx = g('m-Dx', 5);  p.Dy = g('m-Dy', p.Dx);
+  } else if (forma === 2) {
+    p.L  = g('m-L', 30);  p.D = g('m-D', 5);
+  } else if (forma === 3) {
+    p.Lb = g('m-Lb', 30); p.Li = g('m-Li', 25); p.Db = g('m-Db', 5);
+  } else if (forma === 4) {
+    p.Lx = g('m-Lx4', 30); p.Ly = g('m-Ly4', 20); p.D1 = g('m-D1', 5);
+  } else if (forma === 5) {
+    p.La = g('m-La', 30); p.Lb_e = g('m-Lb_e', 25); p.Lc_e = g('m-Lc_e', 20);
+    p.D1 = g('m-D1', 5);
+  } else if (forma === 6) {
+    p.Lx = g('m-Lx6', 80); p.Ly = g('m-Ly6', 60);
+    p.Dx = g('m-Dx', 5);   p.Dy = g('m-Dy', p.Dx);
+    p.Lx1 = g('m-Lx1', 30); p.Ly1 = g('m-Ly1', 20);
+  } else if (forma === 7) {
+    p.Lx = g('m-Lx7', 80); p.Ly = g('m-Ly7', 60);
+    p.Dx = g('m-Dx', 5);   p.Dy = g('m-Dy', p.Dx);
+    p.Lx1 = g('m-Lx1b', 20); p.Ly1 = g('m-Ly1b', 20);
+    p.Lx2 = g('m-Lx2', 20);  p.Ly2 = g('m-Ly2', 20);
+  }
+  return p;
+}
+
+// Compute s3-equivalent fields from form params (mirrors Python sec3_geometria)
+function _uvComputeS3(p) {
+  const { forma } = p;
+  const MAX = 20;
+  const s3 = { Lx1_aj: 0, Ly1_aj: 0, Lx2_aj: 0, Ly2_aj: 0,
+               Nx1: 0, Ny1: 0, Nx2: 0, Ny2: 0, Nx: 2, Ny: 2 };
+  if (forma === 1 || forma === 6 || forma === 7) {
+    const { Lx, Ly, Dx, Dy } = p;
+    s3.Nx = Dx > 0 ? Math.min(Math.round(Ly / Dx) + 1, MAX) : 2;
+    s3.Ny = Dy > 0 ? Math.min(Math.round(Lx / Dy) + 1, MAX) : 2;
+    if (forma === 6 || forma === 7) {
+      s3.Lx1_aj = _uvCeiling(p.Lx1 || 0, p.Dy);
+      s3.Ly1_aj = _uvCeiling(p.Ly1 || 0, p.Dx);
+      s3.Nx1 = p.Dx > 0 ? Math.round(s3.Ly1_aj / p.Dx) : 0;
+      s3.Ny1 = p.Dy > 0 ? Math.round(s3.Lx1_aj / p.Dy) : 0;
+    }
+    if (forma === 7) {
+      s3.Lx2_aj = _uvCeiling(p.Lx2 || 0, p.Dy);
+      s3.Ly2_aj = _uvCeiling(p.Ly2 || 0, p.Dx);
+      s3.Nx2 = p.Dx > 0 ? Math.round(s3.Ly2_aj / p.Dx) : 0;
+      s3.Ny2 = p.Dy > 0 ? Math.round(s3.Lx2_aj / p.Dy) : 0;
+    }
+  } else if (forma === 2) {
+    s3.Nx = p.D > 0 ? Math.min(Math.round(p.L / p.D), MAX) : 2;
+  } else if (forma === 3) {
+    s3.Nx = p.Db > 0 ? Math.min(Math.round(p.Lb / p.Db), MAX) : 2;
+  } else if (forma === 4) {
+    s3.Nx = p.D1 > 0 ? Math.min(Math.round(p.Lx / p.D1), MAX) : 2;
+  } else if (forma === 5) {
+    s3.Nx = p.D1 > 0 ? Math.min(Math.round(p.La / p.D1), MAX) : 2;
+  }
+  if (s3.Nx < 2) s3.Nx = 2;
+  if (s3.Ny < 2) s3.Ny = 2;
+  return s3;
+}
+
+// Get all valid nodes {key, worldX, worldY} — mirrors buildGridGeometry node logic
+function _uvGetValidNodes(p, s3) {
+  const { forma } = p;
+  const nodes = [];
+  if (forma === 1 || forma === 6 || forma === 7) {
+    const { Nx, Ny, Nx1, Ny1, Nx2, Ny2 } = s3;
+    const Dy = p.Dy, Dx = p.Dx;
+    const isValid = (i, j) => {
+      if (i < 0 || i >= Nx || j < 0 || j >= Ny) return false;
+      if (forma === 6) return !(i >= Nx - Nx1 && j >= Ny - Ny1);
+      if (forma === 7) return !(i >= Nx - Nx1 && j < Ny1) && !(i >= Nx - Nx2 && j >= Ny - Ny2);
+      return true;
+    };
+    for (let i = 0; i < Nx; i++)
+      for (let j = 0; j < Ny; j++)
+        if (isValid(i, j)) nodes.push({ key: `${i},${j}`, worldX: j * Dy, worldY: i * Dx });
+  } else {
+    // Triangular: barycentric indices (k, j), k+j <= n_tri
+    const n_tri = s3.Nx;
+    let A, B, C;
+    if (forma === 2) {
+      const L = p.L;
+      A = [0,0]; B = [L,0]; C = [L/2, L*Math.sqrt(3)/2];
+    } else if (forma === 3) {
+      const { Lb, Li } = p;
+      A = [0,0]; B = [Lb,0]; C = [Lb/2, Math.sqrt(Math.max(Li*Li-(Lb/2)**2, 0))];
+    } else if (forma === 4) {
+      A = [0,0]; B = [p.Lx,0]; C = [0,p.Ly];
+    } else {
+      const { La, Lb_e, Lc_e } = p;
+      const cosA = (La*La + Lb_e*Lb_e - Lc_e*Lc_e) / (2*La*Lb_e);
+      A = [0,0]; B = [La,0]; C = [Lb_e*cosA, Lb_e*Math.sqrt(Math.max(1-cosA*cosA,0))];
+    }
+    for (let k = 0; k <= n_tri; k++)
+      for (let j = 0; j <= n_tri - k; j++) {
+        const ii = n_tri - k - j;
+        nodes.push({ key: `${k},${j}`,
+          worldX: (ii*A[0] + j*B[0] + k*C[0]) / n_tri,
+          worldY: (ii*A[1] + j*B[1] + k*C[1]) / n_tri });
+      }
+  }
+  return nodes;
+}
+
+// Get all conductor line segments {x1,y1,x2,y2} — mirrors buildGridGeometry line logic
+function _uvGetLines(p, s3) {
+  const { forma } = p;
+  const segs = [];
+  const seg = (x1,y1,x2,y2) => { if (Math.hypot(x2-x1,y2-y1)>1e-9) segs.push({x1,y1,x2,y2}); };
+  if (forma === 1 || forma === 6 || forma === 7) {
+    const { Lx, Ly, Dx, Dy } = p;
+    const { Nx, Ny, Lx1_aj, Ly1_aj, Lx2_aj, Ly2_aj, Nx1, Ny1, Nx2, Ny2 } = s3;
+    for (let i = 0; i < Nx; i++) {
+      const y = i * Dx;
+      if (forma === 1) { seg(0, y, Lx, y); }
+      else if (forma === 6) { seg(0, y, i >= Nx-Nx1 ? Lx-Lx1_aj : Lx, y); }
+      else { seg(i >= Nx-Nx1 ? Lx1_aj : 0, y, i >= Nx-Nx2 ? Lx-Lx2_aj : Lx, y); }
+    }
+    for (let j = 0; j < Ny; j++) {
+      const x = j * Dy;
+      if (forma === 1) { seg(x, 0, x, Ly); }
+      else if (forma === 6) { seg(x, 0, x, j >= Ny-Ny1 ? Ly-Ly1_aj : Ly); }
+      else { const y1 = j < Ny1 ? Ly-Ly1_aj : j >= Ny-Ny2 ? Ly-Ly2_aj : Ly; seg(x, 0, x, y1); }
+    }
+  } else {
+    const n_tri = s3.Nx;
+    let A, B, C;
+    if (forma === 2) {
+      const L = p.L; A=[0,0]; B=[L,0]; C=[L/2,L*Math.sqrt(3)/2];
+    } else if (forma === 3) {
+      const {Lb,Li}=p; A=[0,0]; B=[Lb,0]; C=[Lb/2,Math.sqrt(Math.max(Li*Li-(Lb/2)**2,0))];
+    } else if (forma === 4) {
+      A=[0,0]; B=[p.Lx,0]; C=[0,p.Ly];
+    } else {
+      const {La,Lb_e,Lc_e}=p;
+      const cosA=(La*La+Lb_e*Lb_e-Lc_e*Lc_e)/(2*La*Lb_e);
+      A=[0,0]; B=[La,0]; C=[Lb_e*cosA, Lb_e*Math.sqrt(Math.max(1-cosA*cosA,0))];
+    }
+    if (n_tri > 0) {
+      const dp = (P0,P1,Popp) => {
+        for (let i=1; i<=n_tri; i++) {
+          const t=i/n_tri;
+          seg(Popp[0]+t*(P0[0]-Popp[0]), Popp[1]+t*(P0[1]-Popp[1]),
+              Popp[0]+t*(P1[0]-Popp[0]), Popp[1]+t*(P1[1]-Popp[1]));
+        }
+      };
+      dp(A,B,C); dp(B,C,A); dp(C,A,B);
+    }
+  }
+  return segs;
+}
+
+function mallaUvChange() {
+  const uv   = parseInt(document.getElementById('m-uv').value);
+  const wrap = document.getElementById('m-uv-custom-wrap');
+  if (uv === 4) {
+    wrap.style.display = '';
+    _uvCustomNodes = new Set();
+    _mallaUvCustomBuild();
+  } else {
+    wrap.style.display = 'none';
+  }
+  // Mostrar selector de método Rg cuando puede haber varillas
+  document.getElementById('m-metodo-rg-wrap').style.display = uv !== 0 ? '' : 'none';
+}
+
+function _mallaUvCustomBuild(restoredNodes) {
+  const p      = _uvReadFormParams();
+  const s3     = _uvComputeS3(p);
+  const nodes  = _uvGetValidNodes(p, s3);
+  const lines  = _uvGetLines(p, s3);
+
+  if (restoredNodes) _uvCustomNodes = new Set(restoredNodes);
+  // Drop keys no longer in the current geometry
+  const validKeys = new Set(nodes.map(n => n.key));
+  for (const k of [..._uvCustomNodes]) { if (!validKeys.has(k)) _uvCustomNodes.delete(k); }
+
+  // Bounding box in world coords
+  const allX = nodes.map(n=>n.worldX).concat(lines.flatMap(l=>[l.x1,l.x2]));
+  const allY = nodes.map(n=>n.worldY).concat(lines.flatMap(l=>[l.y1,l.y2]));
+  const minX = Math.min(...allX, 0), maxX = Math.max(...allX, 1);
+  const minY = Math.min(...allY, 0), maxY = Math.max(...allY, 1);
+  const worldW = maxX - minX || 1, worldH = maxY - minY || 1;
+
+  const PAD   = 16;
+  const wrapEl = document.getElementById('m-uv-custom-wrap');
+  const maxW  = Math.max(Math.floor((wrapEl.clientWidth || 340) * 0.94) - PAD*2, 80);
+  const maxH  = 270;
+  const scale = Math.min(maxW / worldW, maxH / worldH);
+
+  const toX = wx => PAD + (wx - minX) * scale;
+  const toY = wy => PAD + (maxY - wy) * scale;   // flip Y
+
+  const svgW = Math.round(worldW * scale) + PAD*2;
+  const svgH = Math.round(worldH * scale) + PAD*2;
+  const R    = Math.max(4, Math.min(scale * 0.18, 9));
+
+  const ORANGE = '#F5A623', STROKE_ON = '#C26A00', LINE_C = '#94B4CC';
+
+  const svgLines = lines.map(l =>
+    `<line x1="${toX(l.x1).toFixed(1)}" y1="${toY(l.y1).toFixed(1)}" `
+    +`x2="${toX(l.x2).toFixed(1)}" y2="${toY(l.y2).toFixed(1)}" stroke="${LINE_C}" stroke-width="1.5"/>`
+  ).join('');
+
+  const svgCircles = nodes.map(({ key, worldX, worldY }) => {
+    const active = _uvCustomNodes.has(key);
+    return `<circle data-key="${key}" cx="${toX(worldX).toFixed(1)}" cy="${toY(worldY).toFixed(1)}" r="${R}" `
+      +`fill="${active ? ORANGE : 'white'}" stroke="${active ? STROKE_ON : LINE_C}" `
+      +`stroke-width="${active ? 2 : 1.5}" style="cursor:pointer;transition:fill 0.1s"/>`;
+  }).join('');
+
+  const svgEl = document.getElementById('m-uv-svg-wrap');
+  svgEl.innerHTML = `<svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}"
+    style="display:block;max-width:100%;background:white;border-radius:6px;border:1px solid var(--grey-line);">
+    ${svgLines}${svgCircles}</svg>`;
+
+  svgEl.querySelector('svg').addEventListener('click', (e) => {
+    const c = e.target.closest('circle');
+    if (!c) return;
+    const key = c.dataset.key;
+    if (_uvCustomNodes.has(key)) {
+      _uvCustomNodes.delete(key);
+      c.setAttribute('fill', 'white'); c.setAttribute('stroke', LINE_C); c.setAttribute('stroke-width', '1.5');
+    } else {
+      _uvCustomNodes.add(key);
+      c.setAttribute('fill', ORANGE); c.setAttribute('stroke', STROKE_ON); c.setAttribute('stroke-width', '2');
+    }
+    document.getElementById('m-uv-nr-display').textContent = `Nr = ${_uvCustomNodes.size}`;
+  });
+  document.getElementById('m-uv-nr-display').textContent = `Nr = ${_uvCustomNodes.size}`;
+}
+
+function _mallaVarillaReadonly() {
+  const isCustom = document.getElementById('m-varilla-modelo').value === 'custom';
+  const lrEl = document.getElementById('m-Lr');
+  const bEl  = document.getElementById('m-b');
+  lrEl.readOnly = !isCustom;
+  bEl.readOnly  = !isCustom;
+  lrEl.style.background = isCustom ? '' : 'var(--grey-bg, #f5f5f5)';
+  bEl.style.background  = isCustom ? '' : 'var(--grey-bg, #f5f5f5)';
+}
+
+function mallaVarillaChange() {
+  const modelo = document.getElementById('m-varilla-modelo').value;
+  _mallaVarillaReadonly();
+  if (modelo === 'custom') return;
+  const d = VARILLA_DATA[modelo];
+  if (!d) return;
+  document.getElementById('m-Lr').value = d.Lr;
+  document.getElementById('m-b').value  = (d.diametro_mm / 2 / 1000).toFixed(5);
+}
+
+// Tabla 7 IEEE 80-2013 replicada: { seco_min, seco_max, hum_min, hum_max } en Ω·m
+const _MAT_SUP_RHO = {
+  1:  { seco_min: 140e6,  seco_max: 140e6,  hum_min: 1300,  hum_max: 1300  },
+  2:  { seco_min: 4000,   seco_max: 4000,   hum_min: 1200,  hum_max: 1200  },
+  3:  { seco_min: null,   seco_max: null,   hum_min: 6513,  hum_max: 6513  },
+  4:  { seco_min: 1.5e6,  seco_max: 4.5e6,  hum_min: 5000,  hum_max: 5000  },
+  5:  { seco_min: 2.6e6,  seco_max: 3.0e6,  hum_min: 10000, hum_max: 10000 },
+  6:  { seco_min: 7.0e6,  seco_max: 7.0e6,  hum_min: 2000,  hum_max: 3000  },
+  7:  { seco_min: 2.0e6,  seco_max: 2.0e6,  hum_min: 10000, hum_max: 10000 },
+  8:  { seco_min: 40e6,   seco_max: 40e6,   hum_min: 5000,  hum_max: 5000  },
+  9:  { seco_min: 190e6,  seco_max: 190e6,  hum_min: 8000,  hum_max: 8000  },
+  10: { seco_min: 2.0e6,  seco_max: 30e6,   hum_min: 10000, hum_max: 6.0e6 },
+  11: { seco_min: 1.0e6,  seco_max: 1.0e9,  hum_min: 21,    hum_max: 100   },
+};
+
+function mallaSuperChange() {
+  const matId    = parseInt(document.getElementById('m-mat-sup').value);
+  const condicion = document.getElementById('m-condicion')?.value || 'Wet';
+  const valUso   = document.getElementById('m-val-uso')?.value || 'Mínimo';
+
+  // Campo custom
+  const wrapCustom = document.getElementById('m-rho-custom-wrap');
+  if (wrapCustom) wrapCustom.style.display = matId === 12 ? '' : 'none';
+
+  // Recuadro informativo de ρs
+  const wrapDisp  = document.getElementById('m-rho-display-wrap');
+  const inputDisp = document.getElementById('m-rho-display');
+  const labelCond = document.getElementById('m-rho-display-cond');
+  if (!wrapDisp || !inputDisp) return;
+
+  if (matId === 12) {
+    // Para Custom lo ocultamos — el usuario ya ve el campo editable
+    wrapDisp.style.display = 'none';
+    return;
+  }
+
+  wrapDisp.style.display = '';
+  const mat = _MAT_SUP_RHO[matId];
+  if (!mat) { inputDisp.value = '—'; return; }
+
+  const esHum = condicion === 'Wet';
+  const esMin = valUso === 'Mínimo';
+  const lo    = esHum ? mat.hum_min : mat.seco_min;
+  const hi    = esHum ? mat.hum_max : mat.seco_max;
+  const rho   = esMin ? lo : hi;
+
+  // Formatear: valores >= 1e6 → notación "X.X × 10⁶", resto → número normal
+  function fmtRho(v) {
+    if (v === null || v === undefined) return 'N/D';
+    if (v >= 1e6) return (v / 1e6).toLocaleString('es', { maximumFractionDigits: 1 }) + ' × 10⁶ Ω·m';
+    return v.toLocaleString('es') + ' Ω·m';
+  }
+
+  inputDisp.value = fmtRho(rho) + (lo !== hi ? `  (rango: ${fmtRho(lo)} – ${fmtRho(hi)})` : '');
+  if (labelCond) labelCond.textContent = condicion === 'Wet' ? 'Wet' : 'Dry';
+
+  // Si la tabla está abierta, refrescar el resaltado
+  const panel = document.getElementById('m-mat-ref-panel');
+  if (panel && panel.style.display !== 'none') mallaRefreshRefTable();
+}
+
+const _MAT_SUP_NOMBRES = {
+  1: 'Crusher run granite with fines (N.C.)',
+  2: '1.5 in crusher run granite (Ga.)',
+  3: '0.75-1 in granite with fines (Calif.)',
+  4: '#4 (1-2 in) washed granite (Ga.)',
+  5: '#3 (2-4 in) washed granite (Ga.)',
+  6: 'Washed limestone (Mich.)',
+  7: 'Washed granite ~0.75 in gravel',
+  8: 'Washed granite, pea gravel',
+  9: '#57 (0.75 in) washed granite (N.C.)',
+  10: 'Asphalt',
+  11: 'Concrete',
+};
+
+function _fmtRhoTabla(v) {
+  if (v === null || v === undefined) return '<span style="color:var(--text-light);">N/D</span>';
+  if (v >= 1e6) return (v / 1e6).toLocaleString('es', { maximumFractionDigits: 1 }) + ' × 10⁶';
+  return v.toLocaleString('es');
+}
+
+function mallaRefreshRefTable() {
+  const tbody  = document.getElementById('m-mat-ref-tbody');
+  if (!tbody) return;
+  const selMat = parseInt(document.getElementById('m-mat-sup')?.value || '0');
+
+  const filas = [];
+  for (const [id, mat] of Object.entries(_MAT_SUP_RHO)) {
+    const matId  = parseInt(id);
+    const nombre = _MAT_SUP_NOMBRES[matId] || '—';
+    const activo = matId === selMat;
+    const hl     = activo
+      ? 'background:rgba(47,111,204,0.10);font-weight:600;'
+      : (filas.length % 2 === 0 ? 'background:var(--grey-bg);' : '');
+
+    const combos = [
+      { cond: 'Wet',  uso: 'Mínimo', val: mat.hum_min  },
+      { cond: 'Wet',  uso: 'Máximo', val: mat.hum_max  },
+      { cond: 'Dry',  uso: 'Mínimo', val: mat.seco_min },
+      { cond: 'Dry',  uso: 'Máximo', val: mat.seco_max },
+    ];
+
+    combos.forEach((c, ci) => {
+      const border = 'border-bottom:1px solid var(--grey-line);';
+      const td     = `style="padding:5px 12px;${border}${hl}"`;
+      const tdC    = `style="padding:5px 12px;text-align:center;${border}${hl}"`;
+      const tdR    = `style="padding:5px 12px;text-align:right;font-family:var(--font-mono);${border}${hl}"`;
+
+      // Número e indicador de selección solo en primera fila del grupo
+      const numCell = ci === 0
+        ? `<td rowspan="4" style="padding:5px 12px;text-align:center;vertical-align:middle;${border}${hl}">
+             ${activo ? `<span style="display:inline-flex;align-items:center;gap:4px;color:var(--blue-mid);">${matId} ◀</span>` : matId}
+           </td>
+           <td rowspan="4" style="padding:5px 12px;vertical-align:middle;${border}${hl}">${nombre}</td>`
+        : '';
+
+      filas.push(`<tr>${numCell}<td ${tdC}>${c.cond}</td><td ${tdC}>${c.uso}</td><td ${tdR}>${_fmtRhoTabla(c.val)}</td></tr>`);
+    });
+  }
+
+  tbody.innerHTML = filas.join('');
+}
+
+function mallaToggleRefTable() {
+  const panel = document.getElementById('m-mat-ref-panel');
+  const label = document.getElementById('m-mat-ref-btn-label');
+  if (!panel) return;
+  const abierto = panel.style.display !== 'none';
+  if (abierto) {
+    panel.style.display = 'none';
+    label.textContent = 'Ver tabla de referencia';
+  } else {
+    panel.style.display = '';
+    label.textContent = 'Ocultar tabla de referencia';
+    mallaRefreshRefTable();
+  }
+}
+
+function mallaCalcular() {
+  if (!mallaCheckServidor()) return;
+  const forma = parseInt(document.getElementById('m-forma').value);
+  const geo   = mallaGeoParams();
+
+  // Espaciamientos
+  let esp = {};
+  if (forma === 1 || forma === 6 || forma === 7) {
+    esp.Dx = parseFloat(document.getElementById('m-Dx').value) || 0;
+    esp.Dy = parseFloat(document.getElementById('m-Dy').value) || 0;
+  } else if (forma === 2) {
+    esp.D = parseFloat(document.getElementById('m-D').value) || 0;
+  } else if (forma === 3) {
+    esp.Db = parseFloat(document.getElementById('m-Db').value) || 0;
+  } else if (forma === 4) {
+    esp.D1 = parseFloat(document.getElementById('m-D1').value) || 0;
+  } else if (forma === 5) {
+    esp.D1_esc = parseFloat(document.getElementById('m-D1').value) || 0;
+  }
+
+  const matSupId = parseInt(document.getElementById('m-mat-sup').value);
+  const payload = {
+    ...geo, ...esp,
+    h:           parseFloat(document.getElementById('m-h').value)       || 0.5,
+    rho:         parseFloat(document.getElementById('m-rho').value)     || 100,
+    uv:            parseInt(document.getElementById('m-uv').value),
+    varilla_modelo: document.getElementById('m-varilla-modelo').value,
+    Lr:            parseFloat(document.getElementById('m-Lr').value)      || 1.8,
+    b:             parseFloat(document.getElementById('m-b').value)       || 0.00795,
+    material_id: parseInt(document.getElementById('m-material').value),
+    I_falla:     parseFloat(document.getElementById('m-I_falla').value) || 20,
+    tc:          parseFloat(document.getElementById('m-tc').value)      || 0.5,
+    tf:          parseFloat(document.getElementById('m-tf').value)      || 0.5,
+    XR:          parseFloat(document.getElementById('m-XR').value)      || 10,
+    Sf:          parseFloat(document.getElementById('m-Sf').value)      || 1.0,
+    Tamb:        parseFloat(document.getElementById('m-Tamb').value)    || 40,
+    mat_sup_id:  matSupId,
+    condicion:   document.getElementById('m-condicion').value,
+    val_uso:     document.getElementById('m-val-uso').value,
+    hs:          parseFloat(document.getElementById('m-hs').value)      || 0.1,
+    ts:          parseFloat(document.getElementById('m-ts').value)      || 0.5,
+    peso:        parseInt(document.getElementById('m-peso').value),
+    metodo_rg:   document.querySelector('input[name="metodo_rg"]:checked')?.value || 'schwarz',
+  };
+  if (matSupId === 12) {
+    payload.rho_s_custom = parseFloat(document.getElementById('m-rho-custom').value) || 3000;
+  }
+  if (payload.uv === 4) {
+    payload.nR_custom       = _uvCustomNodes.size;
+    payload.uv_custom_nodes = Array.from(_uvCustomNodes); // ["i,j", ...]
+    // Compute world coordinates for visualization
+    const _p4  = _uvReadFormParams();
+    const _s4  = _uvComputeS3(_p4);
+    const _all = _uvGetValidNodes(_p4, _s4);
+    payload.varillas_custom = _all
+      .filter(n => _uvCustomNodes.has(n.key))
+      .map(n => ({ x: n.worldX, y: n.worldY }));
+  }
+
+  // UI: spinner
+  document.getElementById('m-btn-calcular').disabled = true;
+  document.getElementById('m-calc-spinner').style.display = '';
+  document.getElementById('m-calc-error').style.display = 'none';
+  document.getElementById('m-resultados').style.display = 'none';
+
+  // Nombre del proyecto: AppState primero, dg-nombre como fallback
+  const proyectoNombre = AppState.currentProject?.nombre
+    || document.getElementById('dg-nombre')?.value?.trim()
+    || '';
+  if (proyectoNombre) {
+    payload.proyecto = proyectoNombre;
+    console.log('[TerraShield] /calcular — proyecto:', proyectoNombre);
+  } else {
+    console.warn('[TerraShield] /calcular — sin nombre de proyecto disponible. El historial NO se guardará.');
+  }
+
+  fetch('/calcular', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('m-btn-calcular').disabled = false;
+    document.getElementById('m-calc-spinner').style.display = 'none';
+    if (data.error || data.error_sec2 || data.error_sec5 || data.error_sup) {
+      const msg = data.error || data.error_sec2 || data.error_sec5 || data.error_sup;
+      document.getElementById('m-calc-error').textContent = '✘ ' + msg;
+      document.getElementById('m-calc-error').style.display = '';
+      showToast(msg, 'error');
+      return;
+    }
+    // ── DEBUG 1: respuesta completa de /calcular ──────────────────────────
+    console.log('[TerraShield] Respuesta /calcular:', data);
+
+    mallaRenderResultados(payload, data);
+    mallaRenderRecomendaciones(data, payload.peso);
+
+    // ── Actualizar historial directamente (sin segundo fetch) ─────────────
+    const s5 = data.sec5 || {}, s7 = data.sec7 || {}, s8 = data.sec8 || {};
+    const s3 = data.sec3 || {}, sup = data.superficie || {};
+
+    let D_val = 0;
+    if (payload.D)      D_val = parseFloat(payload.D);
+    else if (payload.Db) D_val = parseFloat(payload.Db);
+    else if (payload.D1) D_val = parseFloat(payload.D1);
+    else if (payload.D1_esc) D_val = parseFloat(payload.D1_esc);
+    else if (payload.Dx || payload.Dy) {
+      const dx = parseFloat(payload.Dx || 0), dy = parseFloat(payload.Dy || 0);
+      D_val = (dx > 0 && dy > 0) ? (dx + dy) / 2 : (dx || dy);
+    }
+
+    const nuevaIter = {
+      iter:   (AppState.mallaHistoria || []).length + 1,
+      timestamp: new Date().toISOString().slice(0, 19),
+      Lx:     payload.Lx ?? payload.L ?? 0,
+      Ly:     payload.Ly ?? payload.L ?? 0,
+      D:      parseFloat(D_val.toFixed(4)),
+      h:      payload.h,
+      Lr:     payload.Lr,
+      Nr:     s3.nR ?? 0,
+      hs:     payload.hs,
+      rho_s:  parseFloat((sup.rho_s ?? 0).toFixed(2)),
+      Rg:     parseFloat((s5.Rg ?? 0).toFixed(4)),
+      GPR:    parseFloat((s7.GPR_V ?? 0).toFixed(2)),
+      Em:     parseFloat((s8.Em_V ?? 0).toFixed(2)),
+      Es:     parseFloat((s8.Es_V ?? 0).toFixed(2)),
+      ok_Rg:  (s5.Rg ?? 999) <= 1.0,
+      ok_GPR: !!s7.gpr_ok,
+      ok_Em:  !!s8.em_ok,
+      ok_Es:  !!s8.es_ok,
+      Sf:     payload.Sf,
+      tf:     payload.tf,
+      Etouch: parseFloat((data.sec6?.E_touch_V ?? 0).toFixed(2)),
+      Estep:  parseFloat((data.sec6?.E_step_V  ?? 0).toFixed(2)),
+      Lx1_aj: s3.Lx1_aj ?? 0,
+      Ly1_aj: s3.Ly1_aj ?? 0,
+      Lx2_aj: s3.Lx2_aj ?? 0,
+      Ly2_aj: s3.Ly2_aj ?? 0,
+      payload: payload,
+    };
+
+    if (!AppState.mallaHistoria) AppState.mallaHistoria = [];
+    AppState.mallaHistoria.push(nuevaIter);
+
+    // ── DEBUG 2: estado del historial en memoria ───────────────────────────
+    console.log(`[TerraShield] mallaHistoria en memoria: ${AppState.mallaHistoria.length} iter(s)`, AppState.mallaHistoria);
+
+    // ── DEBUG 3: verificar que los elementos DOM existen ──────────────────
+    const _wrap  = document.getElementById('m-historial-wrap');
+    const _tbody = document.getElementById('m-hist-tbody');
+    console.log('[TerraShield] DOM m-historial-wrap:', _wrap);
+    console.log('[TerraShield] DOM m-hist-tbody:', _tbody);
+
+    mallaRenderHistorial(AppState.mallaHistoria);
+    mallaUpdateExportState(AppState.mallaHistoria);
+    mallaActualizarInicio(nuevaIter);
+  })
+  .catch(err => {
+    document.getElementById('m-btn-calcular').disabled = false;
+    document.getElementById('m-calc-spinner').style.display = 'none';
+    const msg = 'Error de conexión — ¿está corriendo servidor.py?';
+    document.getElementById('m-calc-error').textContent = '✘ ' + msg;
+    document.getElementById('m-calc-error').style.display = '';
+    showToast(msg, 'error');
+  });
+}
+
+function fmt(v, d = 2) {
+  if (v === null || v === undefined) return '—';
+  return typeof v === 'number' ? v.toFixed(d) : v;
+}
+
+function badgeOk(ok) {
+  return ok
+    ? '<span class="badge-ok">✔ CUMPLE</span>'
+    : '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(194,59,34,0.12);color:var(--error);font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:12px;">✘ NO CUMPLE</span>';
+}
+
+function kv(label, val, unit = '') {
+  return `<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--grey-line);padding:4px 0;">
+    <span style="color:var(--text-mid);">${label}</span>
+    <span style="font-family:var(--font-mono);font-size:0.78rem;">${val}${unit ? ' <span style="color:var(--text-light);">'+unit+'</span>' : ''}</span>
+  </div>`;
+}
+
+function mallaRenderResultados(payload, data) {
+  const s2 = data.sec2 || {};
+  const s3 = data.sec3 || {};
+  const s4 = data.sec4 || {};
+  const s5 = data.sec5 || {};
+  const s6 = data.sec6 || {};
+  const s7 = data.sec7 || {};
+  const s8 = data.sec8 || {};
+
+  // ── Tabla verificaciones ──────────────────────────────────────────────────
+  document.getElementById('r-Rg').textContent    = fmt(s5.Rg);
+  document.getElementById('r-GPR').textContent   = fmt(s7.GPR_V, 2);
+  document.getElementById('r-Em').textContent    = fmt(s8.Em_V, 2);
+  document.getElementById('r-Es').textContent    = fmt(s8.Es_V, 2);
+  document.getElementById('r-GPR-lim').textContent = '< ' + fmt(s6.E_touch_V, 2);
+  document.getElementById('r-Em-lim').textContent  = '< ' + fmt(s6.E_touch_V, 2);
+  document.getElementById('r-Es-lim').textContent  = '< ' + fmt(s6.E_step_V,  2);
+
+  const Rg_ok  = s5.Rg  <= 1.0;
+  const GPR_ok = s7.gpr_ok;
+  const Em_ok  = s8.em_ok;
+  const Es_ok  = s8.es_ok;
+  document.getElementById('r-Rg-st').innerHTML  = badgeOk(Rg_ok);
+  document.getElementById('r-GPR-st').innerHTML = badgeOk(GPR_ok);
+  document.getElementById('r-Em-st').innerHTML  = badgeOk(Em_ok);
+  document.getElementById('r-Es-st').innerHTML  = badgeOk(Es_ok);
+
+  // ── §2 Calibre ────────────────────────────────────────────────────────────
+  document.getElementById('r-sec2').innerHTML = [
+    kv('Material', s2.material || '—'),
+    kv('A mín requerida', fmt(s2.A_min_mm2), 'mm²'),
+    kv('Calibre seleccionado', (s2.kcmil ? s2.kcmil + ' kcmil' : '—') + (s2.AWG ? ' (' + s2.AWG + ' AWG)' : '')),
+    kv('Área del conductor', fmt(s2.area_mm2), 'mm²'),
+    kv('Diámetro', fmt(s2.diametro_m ? s2.diametro_m * 1000 : null, 2), 'mm'),
+    kv('Factor asimetría Df', fmt(s2.Df)),
+    kv('I asimétrica sistema', fmt(s2.I_asim_sistema_kA), 'kA'),
+  ].join('');
+
+  // ── §3 Geometría ──────────────────────────────────────────────────────────
+  document.getElementById('r-sec3').innerHTML = [
+    kv('Área A', fmt(s3.A), 'm²'),
+    kv('Lc — Longitud conductores', fmt(s3.Lc), 'm'),
+    kv('nR — N° varillas', s3.nR),
+    kv('LR — Long. total varillas', fmt(s3.LR), 'm'),
+    kv('LT — Longitud total', fmt(s3.LT), 'm'),
+    kv('Dm — Distancia máx.', fmt(s3.Dm), 'm'),
+    kv('Lp — Perímetro', fmt(s3.Lp), 'm'),
+  ].join('');
+
+  // ── §4 Corrientes ─────────────────────────────────────────────────────────
+  document.getElementById('r-sec4').innerHTML = [
+    kv('Ig — Corriente simétrica malla', fmt(s4.Ig_kA), 'kA'),
+    kv('IG — Corriente asimétrica malla', fmt(s4.IG_kA), 'kA'),
+    kv('IG (para cálculo)', fmt(s4.IG_A), 'A'),
+  ].join('');
+
+  // ── §5 Rg ─────────────────────────────────────────────────────────────────
+  document.getElementById('r-sec5').innerHTML = [
+    kv('Método', s5.metodo || '—'),
+    kv('Rg', fmt(s5.Rg), 'Ω'),
+    s5.R1 != null ? kv('R1 (Schwarz)', fmt(s5.R1), 'Ω') : '',
+    s5.R2 != null ? kv('R2 (Schwarz)', fmt(s5.R2), 'Ω') : '',
+    kv('k1', fmt(s5.k1)),
+    kv('k2', fmt(s5.k2)),
+    kv('Verificación', s5.verif_Rg || '—'),
+  ].join('');
+
+  // ── §6 Tensiones ─────────────────────────────────────────────────────────
+  document.getElementById('r-sec6').innerHTML = [
+    kv('Cs', fmt(s6.Cs)),
+    kv('E_touch admisible', fmt(s6.E_touch_V, 2), 'V'),
+    kv('E_step admisible', fmt(s6.E_step_V, 2), 'V'),
+  ].join('');
+
+  // ── §8 Em y Es ────────────────────────────────────────────────────────────
+  document.getElementById('r-sec8').innerHTML = [
+    kv('n = na·nb·nc·nd', fmt(s8.n)),
+    kv('na', fmt(s8.na)),
+    kv('nb', fmt(s8.nb)),
+    kv('nc', fmt(s8.nc)),
+    kv('nd', fmt(s8.nd)),
+    kv('Kii', fmt(s8.Kii)),
+    kv('Kh', fmt(s8.Kh)),
+    kv('Ki', fmt(s8.Ki)),
+    kv('Km', fmt(s8.Km)),
+    kv('Ks', fmt(s8.Ks)),
+    kv('LM', fmt(s8.LM), 'm'),
+    kv('LS', fmt(s8.LS), 'm'),
+    kv('Em', fmt(s8.Em_V, 2), 'V'),
+    kv('Es', fmt(s8.Es_V, 2), 'V'),
+    kv('Veredicto', s8.veredicto || '—'),
+  ].join('');
+
+  document.getElementById('m-resultados').style.display = '';
+  mallaRenderPlots(payload, data);
+  document.getElementById('m-resultados').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showToast('Cálculo completado', 'success');
+}
+
+// ── Recomendaciones contextuales ──────────────────────────────────────────
+
+function mallaRenderRecomendaciones(data, pesoActual) {
+  // Garantía de DOM: crear el contenedor si no existe
+  let wrap = document.getElementById('m-rec-wrap');
+  if (!wrap) {
+    console.warn('[TerraShield] m-rec-wrap no encontrado — creando dinámicamente');
+    wrap = document.createElement('div');
+    wrap.id = 'm-rec-wrap';
+    wrap.style.cssText = 'margin-top:4px;';
+    const vizWrap = document.querySelector('#m-resultados .form-card');
+    if (vizWrap) vizWrap.parentNode.insertBefore(wrap, vizWrap);
+    else document.getElementById('m-resultados')?.appendChild(wrap);
+  }
+
+  const rec    = data.recomendaciones || {};
+  const s5     = data.sec5  || {};
+  const s7     = data.sec7  || {};
+  const s8     = data.sec8  || {};
+  const ok_Rg  = (s5.Rg ?? 999) <= 1.0;
+  const ok_GPR = !!s7.gpr_ok;
+  const ok_Em  = !!s8.em_ok;
+  const ok_Es  = !!s8.es_ok;
+  const todoOk = ok_Rg && ok_GPR && ok_Em && ok_Es;
+
+  console.log('[TerraShield] mallaRenderRecomendaciones — todoOk:', todoOk, '| rec keys:', Object.keys(rec));
+
+  // ── Estilos reutilizables ──────────────────────────────────────────────
+  const cardBase  = 'border-radius:var(--radius-md);padding:14px 16px;margin-bottom:10px;';
+  const titleStyle = 'font-size:0.78rem;font-weight:700;color:var(--text-dark);margin-bottom:10px;display:flex;align-items:center;gap:7px;';
+  const subStyle  = 'font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-light);margin:10px 0 5px;';
+  const textStyle = 'font-size:0.79rem;color:var(--text-mid);line-height:1.65;margin:0;';
+  const boldVal   = v => `<strong style="color:var(--text-dark);font-family:var(--font-mono);">${v}</strong>`;
+  const divider   = '<div style="border-top:1px solid var(--grey-line);margin:10px 0;"></div>';
+  const mostrarPeso = parseInt(pesoActual) !== 70;
+
+  // ── Banner todo OK ─────────────────────────────────────────────────────
+  if (todoOk) {
+    wrap.style.display = '';
+    wrap.innerHTML = `
+      <div style="${cardBase}background:rgba(26,140,91,0.08);border:1px solid rgba(26,140,91,0.28);">
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:700;color:var(--success);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+          Diseño aceptable — todos los criterios de seguridad se cumplen.
+        </div>
+      </div>`;
+    return;
+  }
+
+  // ── Encabezado del panel ───────────────────────────────────────────────
+  let html = `
+    <div class="form-card" style="padding:16px 18px;">
+      <div class="${titleStyle.replace('display:flex;', '')}">
+        <div style="${titleStyle}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0;color:var(--warn);"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Recomendaciones técnicas
+        </div>
+      </div>`;
+
+  // ── Criterio 1: Rg ────────────────────────────────────────────────────
+  if (rec.rg) {
+    const r = rec.rg;
+    const lrMayores = r.Lr_modelos_mayores || [];
+    html += `
+      <div style="${cardBase}background:rgba(194,59,34,0.06);border:1px solid rgba(194,59,34,0.22);">
+        <div style="${titleStyle}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--error);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Rg &gt; 1 Ω — Resistencia de la malla fuera de límite
+        </div>
+        <div style="${subStyle}">Geometría</div>
+        <p style="${textStyle}">Tus dimensiones actuales son ${boldVal(r.Lx + ' m × ' + r.Ly + ' m')} (Área = ${boldVal(r.A + ' m²')}). Ampliar el perímetro hacia los límites del terreno es la acción con mayor impacto sobre Rg.</p>
+        ${divider}
+        <div style="${subStyle}">Profundidad h</div>
+        <p style="${textStyle}">${
+          r.h_en_limite
+            ? `Tu profundidad actual es ${boldVal(r.h + ' m')}. El límite máximo recomendado es 1.5 m.`
+            : `Tu profundidad actual es ${boldVal(r.h + ' m')}. Puedes aumentarla hasta 1.5 m — más allá de ese límite Em puede crecer en lugar de disminuir.`
+        }</p>
+        ${divider}
+        <div style="${subStyle}">Longitud de varilla</div>
+        <p style="${textStyle}">${
+          lrMayores.length > 0
+            ? `Tu varilla actual es de ${boldVal(parseFloat(r.Lr_actual).toFixed(1) + ' m')}. Los modelos disponibles más largos son: ${boldVal(lrMayores.map(v => parseFloat(v).toFixed(1)).join(' m, ') + ' m')}. Varillas más profundas alcanzan capas de menor resistividad.`
+            : `Tu varilla actual es de ${boldVal(parseFloat(r.Lr_actual).toFixed(1) + ' m')}. Ya usas el modelo más largo disponible.`
+        }</p>
+      </div>`;
+  }
+
+  // ── Criterio 2: GPR ───────────────────────────────────────────────────
+  if (rec.gpr) {
+    const r = rec.gpr;
+    html += `
+      <div style="${cardBase}background:rgba(194,59,34,0.06);border:1px solid rgba(194,59,34,0.22);">
+        <div style="${titleStyle}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--error);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          GPR &gt; E_touch — Potencial de tierra fuera de límite
+        </div>
+        <div style="${subStyle}">Sistema</div>
+        <p style="${textStyle}">Tu factor de división actual es ${boldVal('Sf = ' + r.Sf)}. Conectar la malla a cables de guarda o neutros de alimentadores reduciría Sf, ya que una mayor parte de la corriente retornaría por trayectorias metálicas externas, disminuyendo IG inyectada al suelo y por tanto el GPR.</p>
+        ${divider}
+        <div style="${subStyle}">Protecciones</div>
+        <p style="${textStyle}">Tu tiempo de despeje actual es ${boldVal('tf = ' + r.tf + ' s')}, lo que da E_touch tolerable = ${boldVal(r.Etouch + ' V')}. Reducir tf mediante protecciones más rápidas elevaría ese umbral.</p>
+        ${divider}
+        <div style="${subStyle}">Tensión tolerable — Superficie</div>
+        <p style="${textStyle}">Incrementar ${boldVal('hs')} o usar un material con mayor ${boldVal('ρs')} eleva E_touch tolerable al aumentar la resistencia en serie con los pies. Revisa la sección §6.</p>
+        ${mostrarPeso ? `${divider}
+        <div style="${subStyle}">Tensión tolerable — Peso corporal</div>
+        <p style="${textStyle}">Usar ${boldVal('70 kg')} en lugar de 50 kg aumenta E_touch tolerable.</p>` : ''}
+      </div>`;
+  }
+
+  // ── Criterio 3: Em ────────────────────────────────────────────────────
+  if (rec.em) {
+    const r = rec.em;
+    const hasDxDy = r.Dx !== undefined && r.Dy !== undefined;
+    const dxList  = hasDxDy ? (r.Dx_menores || []).map(d => boldVal(parseFloat(d).toFixed(1) + ' m')).join(', ') || '—' : '';
+    const dyList  = hasDxDy ? (r.Dy_menores || []).map(d => boldVal(parseFloat(d).toFixed(1) + ' m')).join(', ') || '—' : '';
+    const dList   = !hasDxDy ? ((r.D_menores || []).map(d => boldVal(parseFloat(d).toFixed(1) + ' m')).join(', ') || '—') : '';
+    const geoText = hasDxDy
+      ? (() => {
+          const dxSame = !dxList || dxList === '—';
+          const dySame = !dyList || dyList === '—';
+          const intro = `Tus espaciamientos actuales son ${boldVal('Dx = ' + parseFloat(r.Dx).toFixed(1) + ' m')} y ${boldVal('Dy = ' + parseFloat(r.Dy).toFixed(1) + ' m')}.`;
+          const dxRec = dxSame ? `Dx (${parseFloat(r.Dx).toFixed(1)} m) ya es el mínimo disponible.` : `Opciones menores para Dx: ${dxList}.`;
+          const dyRec = dySame ? `Dy (${parseFloat(r.Dy).toFixed(1)} m) ya es el mínimo disponible.` : `Opciones menores para Dy: ${dyList}.`;
+          return `${intro} ${dxRec} ${dyRec} Reducir el espaciamiento densifica la cuadrícula y disminuye Em (actúa sobre el factor Km).`;
+        })()
+      : `Tu espaciamiento actual es ${boldVal('D = ' + parseFloat(r.D).toFixed(1) + ' m')}. Los espaciamientos menores disponibles son: ${dList}. Reducir D densifica la cuadrícula y disminuye Em — es la acción más directa sobre el factor Km.`;
+    html += `
+      <div style="${cardBase}background:rgba(194,59,34,0.06);border:1px solid rgba(194,59,34,0.22);">
+        <div style="${titleStyle}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--error);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Em &gt; E_touch — Voltaje de malla fuera de límite
+        </div>
+        <div style="${subStyle}">Geometría</div>
+        <p style="${textStyle}">${geoText}</p>
+        ${(r.configuracion_actual !== 'todas las intersecciones' && r.configuracion_actual !== 'personalizado') ? `${divider}
+        <div style="${subStyle}">Varillas — configuración</div>
+        ${(() => {
+          const cfg = r.configuracion_actual;
+          const nota = 'Mayor cobertura mejora la distribución del potencial (actúa sobre Kii) y más varillas incrementan LM, reduciendo directamente Em.';
+          let txt = '';
+          if (cfg === 'sin varillas') {
+            txt = `No tienes varillas instaladas. Considera agregar varillas en ${boldVal('esquinas')}, ${boldVal('perímetro')} o ${boldVal('todas las intersecciones')}. ${nota}`;
+          } else if (cfg === 'solo esquinas') {
+            txt = `Tu configuración actual es ${boldVal('solo esquinas')} con ${boldVal(r.Nr + ' varillas')}. Puedes mejorar pasando a ${boldVal('perímetro')} o ${boldVal('todas las intersecciones')}. ${nota}`;
+          } else {
+            txt = `Tu configuración actual es ${boldVal('perímetro')} con ${boldVal(r.Nr + ' varillas')}. La siguiente mejora es pasar a ${boldVal('todas las intersecciones')}. ${nota}`;
+          }
+          return `<p style="${textStyle}">${txt}</p>`;
+        })()}` : ''}
+        ${divider}
+        <div style="${subStyle}">Varillas — longitud</div>
+        ${(() => {
+          const lrList = (r.Lr_modelos_mayores || []).map(v => boldVal(parseFloat(v).toFixed(1) + ' m')).join(', ');
+          const txt = lrList
+            ? `Tu varilla actual es de ${boldVal(parseFloat(r.Lr_actual).toFixed(1) + ' m')}. Los modelos disponibles más largos son: ${lrList}. Varillas más largas incrementan LM, reduciendo directamente Em.`
+            : `Tu varilla actual es de ${boldVal(parseFloat(r.Lr_actual).toFixed(1) + ' m')}. Ya usas el modelo más largo disponible.`;
+          return `<p style="${textStyle}">${txt}</p>`;
+        })()}
+        ${divider}
+        <div style="${subStyle}">Tensión tolerable — Superficie</div>
+        <p style="${textStyle}">Incrementar ${boldVal('hs')} o usar un material con mayor ${boldVal('ρs')} eleva E_touch tolerable al aumentar la resistencia en serie con los pies. Revisa la sección §6.</p>
+        ${mostrarPeso ? `${divider}
+        <div style="${subStyle}">Tensión tolerable — Peso corporal</div>
+        <p style="${textStyle}">Usar ${boldVal('70 kg')} en lugar de 50 kg aumenta E_touch tolerable.</p>` : ''}
+      </div>`;
+  }
+
+  // ── Criterio 4: Es ────────────────────────────────────────────────────
+  if (rec.es) {
+    const r = rec.es;
+    html += `
+      <div style="${cardBase}background:rgba(194,59,34,0.06);border:1px solid rgba(194,59,34,0.22);">
+        <div style="${titleStyle}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--error);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Es &gt; E_step — Voltaje de paso fuera de límite
+        </div>
+        <div style="${subStyle}">Superficie</div>
+        <p style="${textStyle}">Tu capa superficial actual: ${boldVal('ρs = ' + r.rho_s + ' Ω·m')}, ${boldVal('hs = ' + parseFloat(r.hs).toFixed(3) + ' m')} → Cs = ${boldVal(r.Cs)}, E_step tolerable = ${boldVal(r.Estep + ' V')}.</p>
+        <p style="${textStyle};margin-top:6px;">${(() => {
+          const mayores = r.rho_s_mayores || [];
+          if (mayores.length > 0) {
+            const lista = mayores.map(v => boldVal(v.toLocaleString('es') + ' Ω·m')).join(', ');
+            return `Los materiales con mayor resistividad disponibles en la tabla son: ${lista}. Un material con mayor ρs eleva E_step tolerable.`;
+          }
+          return 'Ya usas el material con mayor resistividad disponible.';
+        })()}</p>
+        <p style="${textStyle};margin-top:6px;">${
+          r.hs_en_limite
+            ? `Tu espesor actual es ${boldVal(parseFloat(r.hs).toFixed(3) + ' m')}. El límite máximo recomendado es 0.150 m.`
+            : `Tu espesor actual es ${boldVal(parseFloat(r.hs).toFixed(3) + ' m')}. El rango recomendado es 0.080 m a 0.150 m. Puedes aumentarlo para elevar E_step tolerable.`
+        }</p>
+        ${divider}
+        <div style="${subStyle}">Protecciones</div>
+        <p style="${textStyle}">Tu tiempo de despeje actual es ${boldVal('tf = ' + r.tf + ' s')}. Reducir tf mediante protecciones más rápidas eleva E_step tolerable — aplica igual que para E_touch.</p>
+        ${mostrarPeso ? `${divider}
+        <div style="${subStyle}">Tensión tolerable — Peso corporal</div>
+        <p style="${textStyle}">Usar ${boldVal('70 kg')} en lugar de 50 kg aumenta E_step tolerable.</p>` : ''}
+      </div>`;
+  }
+
+  html += '</div>'; // cierre form-card
+
+  wrap.style.display = '';
+  wrap.innerHTML = html;
+  console.log('[TerraShield] Panel de recomendaciones renderizado — criterios fallidos:', Object.keys(rec));
+}
+
+// ── Historial de iteraciones ───────────────────────────────────────────────
+
+function mallaRenderHistorial(historia) {
+  const wrap  = document.getElementById('m-historial-wrap');
+  const tbody = document.getElementById('m-hist-tbody');
+  const count = document.getElementById('m-hist-count');
+
+  wrap.style.display = '';
+
+  if (!historia || historia.length === 0) {
+    count.textContent = '';
+    tbody.innerHTML = `<tr><td colspan="17" style="padding:20px;text-align:center;color:var(--text-light);font-size:0.8rem;font-style:italic;">
+      Aún no hay iteraciones. Calcula para comenzar el historial.
+    </td></tr>`;
+    return;
+  }
+
+  count.textContent = `${historia.length} iteración${historia.length !== 1 ? 'es' : ''}`;
+
+  // Más reciente al tope
+  const rows = [...historia].reverse();
+
+  // Etiqueta de dimensiones según forma; recibe el objeto de iteración completo
+  function dimLabel(it) {
+    const p = it.payload;
+    if (!p) return '—';
+    const f = parseInt(p.forma);
+    const n1 = v => (v != null ? parseFloat(v).toFixed(1) : '?');
+    if (f === 1) return `Lx ${n1(p.Lx)} / Ly ${n1(p.Ly)}`;
+    if (f === 6) {
+      const parts = [`Lx ${n1(p.Lx)} / Ly ${n1(p.Ly)}`];
+      if (it.Lx1_aj || it.Ly1_aj) parts.push(`Lx1* ${n1(it.Lx1_aj)} / Ly1* ${n1(it.Ly1_aj)}`);
+      return parts.join(' / ');
+    }
+    if (f === 7) {
+      const parts = [`Lx ${n1(p.Lx)} / Ly ${n1(p.Ly)}`];
+      if (it.Lx1_aj || it.Ly1_aj) parts.push(`Lx1* ${n1(it.Lx1_aj)} / Ly1* ${n1(it.Ly1_aj)}`);
+      if (it.Lx2_aj || it.Ly2_aj) parts.push(`Lx2* ${n1(it.Lx2_aj)} / Ly2* ${n1(it.Ly2_aj)}`);
+      return parts.join(' / ');
+    }
+    if (f === 2) return `L ${n1(p.L)}`;
+    if (f === 3) return `Lb ${n1(p.Lb)} / Li ${n1(p.Li)}`;
+    if (f === 4) return `Lx ${n1(p.Lx)} / Ly ${n1(p.Ly)}`;
+    if (f === 5) return `La ${n1(p.La)} / Lb ${n1(p.Lb_e)} / Lc ${n1(p.Lc_e)}`;
+    return `${n1(p.Lx || p.L)} × ${n1(p.Ly || p.L)}`;
+  }
+
+  tbody.innerHTML = rows.map((it, idx) => {
+    const prev = rows[idx + 1];
+
+    function bgColor(key) {
+      if (!prev || prev[key] === undefined) return '';
+      const curr = parseFloat(it[key]);
+      const p    = parseFloat(prev[key]);
+      if (isNaN(curr) || isNaN(p) || curr === p) return '';
+      return curr < p ? 'rgba(26,140,91,0.12)' : 'rgba(194,59,34,0.08)';
+    }
+
+    function tdS(align, key) {
+      const bg = key ? bgColor(key) : '';
+      const base = `padding:7px 10px;border-bottom:1px solid var(--grey-line);font-family:var(--font-mono);text-align:${align};`;
+      return `style="${base}${bg ? 'background:' + bg + ';' : ''}"`;
+    }
+
+    function criterio(label, ok) {
+      const color = ok ? 'var(--success)' : 'var(--error)';
+      const sym   = ok ? '✔' : '✘';
+      return `<div style="color:${color};white-space:nowrap;">${label} ${sym}</div>`;
+    }
+
+    const d1  = v => (v != null && !isNaN(v)) ? parseFloat(v).toFixed(1) : '—';
+    const d2  = v => (v != null && !isNaN(v)) ? parseFloat(v).toFixed(2) : '—';
+
+    return `<tr>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--grey-line);text-align:center;">${it.iter}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--grey-line);font-family:var(--font-mono);white-space:nowrap;">${dimLabel(it)}</td>
+      <td ${tdS('right','D')}>${d1(it.D)}</td>
+      <td ${tdS('right','')}>${d1(it.h)}</td>
+      <td ${tdS('right','')}>${d1(it.Lr)}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--grey-line);text-align:center;">${it.Nr}</td>
+      <td ${tdS('right','')}>${d1(it.Sf)}</td>
+      <td ${tdS('right','')}>${d1(it.tf)}</td>
+      <td ${tdS('right','')}>${d1(it.hs)}</td>
+      <td ${tdS('right','Rg')}>${d2(it.Rg)}</td>
+      <td ${tdS('right','GPR')}>${d1(it.GPR)}</td>
+      <td ${tdS('right','Em')}>${d1(it.Em)}</td>
+      <td ${tdS('right','Es')}>${d1(it.Es)}</td>
+      <td ${tdS('right','')}>${d1(it.Etouch)}</td>
+      <td ${tdS('right','')}>${d1(it.Estep)}</td>
+      <td style="padding:7px 12px;border-bottom:1px solid var(--grey-line);text-align:left;line-height:1.5;">
+        ${criterio('Rg', it.ok_Rg)}${criterio('GPR', it.ok_GPR)}${criterio('Em', it.ok_Em)}${criterio('Es', it.ok_Es)}
+      </td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--grey-line);">
+        <button class="btn btn-secondary"
+          style="height:24px;font-size:0.68rem;padding:0 10px;white-space:nowrap;"
+          onclick="mallaRestaurar(${it.iter})">Restaurar</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function mallaRestaurar(iterNum) {
+  const hist = AppState.mallaHistoria || [];
+  const it   = hist.find(h => h.iter === iterNum);
+  if (!it || !it.payload) {
+    showToast('No hay datos de formulario para esta iteración', 'error');
+    return;
+  }
+  const p = it.payload;
+
+  function setVal(id, v) {
+    const el = document.getElementById(id);
+    if (el && v !== undefined && v !== null) el.value = v;
+  }
+
+  // Geometría
+  setVal('m-forma', p.forma);
+  mallaFormaChange(); // actualiza paneles de geometría
+  setVal('m-Lx', p.Lx); setVal('m-Ly', p.Ly);
+  setVal('m-L', p.L);
+  setVal('m-Lb', p.Lb); setVal('m-Li', p.Li); setVal('m-La', p.La);
+  setVal('m-Dx', p.Dx); setVal('m-Dy', p.Dy);
+  setVal('m-D',  p.D);  setVal('m-Db', p.Db); setVal('m-D1', p.D1 || p.D1_esc);
+
+  // Parámetros generales
+  setVal('m-h',        p.h);
+  setVal('m-rho',      p.rho);
+  setVal('m-uv',           p.uv);
+  if (p.varilla_modelo) setVal('m-varilla-modelo', p.varilla_modelo);
+  _mallaVarillaReadonly();
+  setVal('m-Lr',           p.Lr);
+  setVal('m-b',            p.b);
+  setVal('m-material', p.material_id);
+  setVal('m-I_falla',  p.I_falla);
+  setVal('m-tc',       p.tc);
+  setVal('m-tf',       p.tf);
+  setVal('m-XR',       p.XR);
+  setVal('m-Sf',       p.Sf);
+  setVal('m-Tamb',     p.Tamb);
+  setVal('m-mat-sup',  p.mat_sup_id);
+  setVal('m-condicion',p.condicion);
+  setVal('m-val-uso',  p.val_uso);
+  setVal('m-hs',       p.hs);
+  setVal('m-ts',       p.ts);
+  setVal('m-peso',     p.peso);
+  if (p.rho_s_custom) setVal('m-rho-custom', p.rho_s_custom);
+  const _mrg = p.metodo_rg || 'schwarz';
+  const _mrgEl = document.querySelector(`input[name="metodo_rg"][value="${_mrg}"]`);
+  if (_mrgEl) _mrgEl.checked = true;
+  const _uvVal = parseInt(p.uv || 0);
+  document.getElementById('m-metodo-rg-wrap').style.display = _uvVal !== 0 ? '' : 'none';
+
+  _mallaVarillaReadonly();  // readonly state sin sobreescribir Lr/b restaurados
+  // Restaurar canvas personalizado de varillas
+  if (p.uv === 4 || p.uv === '4') {
+    document.getElementById('m-uv-custom-wrap').style.display = '';
+    _mallaUvCustomBuild(p.uv_custom_nodes || []);
+  } else {
+    document.getElementById('m-uv-custom-wrap').style.display = 'none';
+  }
+  mallaSuperChange();
+  showToast(`Iteración #${iterNum} restaurada en el formulario`, 'success');
+}
+
+// ── Clasificación IEEE 80 → ρ del suelo ───────────────────────────────────
+function mallaRhoClaseChange(val) {
+  const input = document.getElementById('m-rho');
+  if (val && input) input.value = val;
+}
+
+// ── Actualizar panel de inicio tras calcular malla ────────────────────────
+function mallaActualizarInicio(iter) {
+  const statRg   = document.getElementById('stat-rg');
+  const statUnit = document.getElementById('stat-rg-unit');
+  const siMalla  = document.getElementById('si-malla');
+  const siTag    = document.getElementById('si-malla-tag');
+
+  if (statRg) statRg.textContent = iter.Rg.toFixed(2);
+
+  const cumple = iter.ok_Rg && iter.ok_GPR && iter.ok_Em && iter.ok_Es;
+  if (statUnit) statUnit.textContent = cumple ? 'Ω — Diseño aprobado' : 'Ω — Revisar criterios';
+
+  if (siMalla) {
+    const dot = siMalla.querySelector('.status-dot');
+    if (dot) { dot.className = cumple ? 'status-dot done' : 'status-dot warn'; }
+  }
+  if (siTag) {
+    siTag.className  = cumple ? 'si-tag done' : 'si-tag warn';
+    siTag.textContent = cumple ? 'Calculado ✔' : 'Calculado — revisar';
+  }
+}
+
+// ── Estado de exportación ──────────────────────────────────────────────────
+
+function mallaUpdateExportState(historia) {
+  const navExp  = document.getElementById('nav-exportar');
+  const navLock = document.getElementById('nav-exportar-lock');
+  if (navExp)  { navExp.style.opacity = '1'; navExp.style.cursor = ''; }
+  if (navLock) navLock.style.display = 'none';
+
+  const btnXlsx = document.getElementById('btn-export-excel');
+  const btnPdf  = document.getElementById('btn-export-pdf');
+  if (btnXlsx) btnXlsx.disabled = false;
+  if (btnPdf)  btnPdf.disabled  = false;
+
+  const banner = document.getElementById('export-status-banner');
+  if (banner) banner.style.display = 'none';
+
+  AppState.exportarDesbloqueado = true;
+}
+
+function navExportarClick(el) {
+  showPage('page-exportar', el);
+}
+
+function exportarExcel() {
+  const nombre = AppState.currentProject?.nombre;
+  if (!nombre) { showToast('No hay proyecto activo', 'error'); return; }
+  window.location.href = `/proyectos/${encodeURIComponent(nombre)}/exportar/excel`;
+}
+
+async function exportarPDF() {
+  const nombre = AppState.currentProject?.nombre;
+  if (!nombre) { showToast('No hay proyecto activo', 'error'); return; }
+
+  const btn         = document.getElementById('btn-export-pdf');
+  const btnOriginal = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Generando...'; }
+
+  try {
+    // ── 1. Tomar la ultima iteracion del historial (con o sin todos OK) ───
+    const hist = AppState.mallaHistoria || [];
+    if (!hist.length) {
+      showToast('Calcule la malla al menos una vez antes de exportar.', 'error');
+      return;
+    }
+    const iter = [...hist].reverse()[0]; // ultima iteracion calculada
+    const todoOk = iter.ok_Rg && iter.ok_GPR && iter.ok_Em && iter.ok_Es;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W   = doc.internal.pageSize.getWidth();
+    let   y   = 15;
+
+    // ── 2. Fecha real ─────────────────────────────────────────────────────
+    const ahora    = new Date();
+    const pad      = n => String(n).padStart(2, '0');
+    const fechaStr = `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()}  ${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
+
+    // ── 3. Encabezado ─────────────────────────────────────────────────────
+    doc.setFillColor(10, 61, 145);
+    doc.rect(0, 0, W, 28, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TERRASHIELD', 14, 12);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Malla de puesta a tierra — IEEE Std 80-2013', 14, 20);
+    doc.text(`Proyecto: ${nombre}   |   Fecha: ${fechaStr}`, 14, 26);
+    y = 36;
+
+    // Advertencia si no todos los criterios estan OK
+    if (!todoOk) {
+      doc.setFillColor(255, 243, 205);
+      doc.rect(14, y, W - 28, 8, 'F');
+      doc.setTextColor(133, 77, 14);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('ADVERTENCIA: No todos los criterios IEEE 80 estan aprobados en esta iteracion.', 16, y + 5.5);
+      y += 13;
+    }
+
+    // ── 4. Imagen 2D de la malla ──────────────────────────────────────────
+    try {
+      // Hacer la seccion visible temporalmente si estuviera oculta
+      const viz = document.getElementById('viz-2d');
+      const wasHidden = viz && viz.style.display === 'none';
+      if (wasHidden) viz.style.display = '';
+
+      const imgData = await Plotly.toImage('viz-2d', { format: 'png', width: 880, height: 460 });
+
+      if (wasHidden) viz.style.display = 'none';
+
+      const imgH = 78;
+      const imgW = imgH * (880 / 460);
+      const imgX = (W - imgW) / 2;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 30, 30);
+      doc.text('Visualizacion de la malla — Vista 2D', 14, y);
+      y += 5;
+      doc.addImage(imgData, 'PNG', imgX, y, imgW, imgH);
+      y += imgH + 8;
+    } catch (e) {
+      console.warn('[exportarPDF] imagen 2D no disponible:', e);
+    }
+
+    // ── 5. Tabla de resultados ─────────────────────────────────────────────
+    const nd  = k => { const v = iter[k]; return (v !== undefined && v !== null) ? String(v) : 'N/D'; };
+    const ok  = k => iter[`ok_${k}`] ? '[OK]' : '[--]';
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 30, 30);
+    doc.text('Resultado del diseno — Iteracion ' + nd('iter'), 14, y);
+    y += 4;
+
+    doc.autoTable({
+      startY: y,
+      head: [['Parametro', 'Valor', 'Unidad / Estado']],
+      body: [
+        ['Iteracion N.',           nd('iter'),                                                          ''],
+        ['Fecha de calculo',       iter.timestamp || 'N/D',                                            ''],
+        ['Lx - longitud X',        nd('Lx'),                                                           'm'],
+        ['Ly - longitud Y',        nd('Ly'),                                                           'm'],
+        ['D - espaciamiento',      nd('D'),                                                            'm'],
+        ['h - profundidad',        nd('h'),                                                            'm'],
+        ['Lr - longitud varilla',  nd('Lr'),                                                           'm'],
+        ['Nr - num. varillas',     nd('Nr'),                                                           ''],
+        ['hs - capa superficial',  nd('hs'),                                                           'm'],
+        ['rhos - resist. sup.',    iter.rho_s != null ? String(Math.round(iter.rho_s * 100) / 100) : 'N/D', 'Ohm.m'],
+        ['Rg - resist. de malla',  nd('Rg'),                                                           'Ohm ' + ok('Rg')],
+        ['GPR - potencial tierra', nd('GPR'),                                                          'V   ' + ok('GPR')],
+        ['Em - voltaje de malla',  nd('Em'),                                                           'V   ' + ok('Em')],
+        ['Es - voltaje de paso',   nd('Es'),                                                           'V   ' + ok('Es')],
+      ],
+      styles:      { fontSize: 9, cellPadding: 3 },
+      headStyles:  { fillColor: [10, 61, 145], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [238, 243, 255] },
+      columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 50 }, 2: { cellWidth: 42 } },
+      margin: { left: 14, right: 14 },
+    });
+
+    // ── 6. Pie de página — malla ──────────────────────────────────────────
+    const pageH = doc.internal.pageSize.getHeight();
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`TerraShield — Proyecto Final | Universidad del Norte · Barranquilla, Colombia | (c) ${ahora.getFullYear()}`, W / 2, pageH - 6, { align: 'center' });
+
+    // ── 7. Página de apantallamiento (si hay resultados) ──────────────────
+    if (typeof _apantLastResult !== 'undefined' && _apantLastResult && _apantLastResult.S) {
+      doc.addPage();
+      let ya = 0;
+
+      // Encabezado igual al de malla
+      doc.setFillColor(10, 61, 145);
+      doc.rect(0, 0, W, 28, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+      doc.text('TERRASHIELD', 14, 12);
+      doc.setFontSize(9);  doc.setFont('helvetica', 'normal');
+      doc.text('Apantallamiento — IEEE Std 998  ·  Método de la Esfera Rodante (EGM)', 14, 20);
+      doc.text(`Proyecto: ${nombre}   |   Fecha: ${fechaStr}`, 14, 26);
+      ya = 36;
+
+      // Imagen 3D del apantallamiento
+      try {
+        const pageApant  = document.getElementById('page-apant');
+        const resApant   = document.getElementById('apant-resultados');
+        const chartApant = document.getElementById('apant-chart');
+        const hidPage = pageApant  && pageApant.style.display  === 'none';
+        const hidRes  = resApant   && resApant.style.display   === 'none';
+        if (hidPage) pageApant.style.display  = '';
+        if (hidRes)  resApant.style.display   = '';
+
+        const apImg = await Plotly.toImage('apant-chart', { format: 'png', width: 1200, height: 650 });
+
+        if (hidPage) pageApant.style.display  = 'none';
+        if (hidRes)  resApant.style.display   = 'none';
+
+        const apImgH = 72;
+        const apImgW = apImgH * (1200 / 650);
+        const apImgX = Math.max((W - apImgW) / 2, 14);
+
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
+        doc.text('Modelo 3D de apantallamiento — vista superior/3D libre', 14, ya);
+        ya += 5;
+        doc.addImage(apImg, 'PNG', apImgX, ya, apImgW, apImgH);
+        ya += apImgH + 8;
+      } catch (eImg) {
+        console.warn('[exportarPDF] imagen apant-chart no disponible:', eImg);
+      }
+
+      // Tabla de parámetros EGM
+      const apBIL = document.getElementById('apant-bil')?.value || '—';
+      const apZs  = document.getElementById('apant-zs')?.value  || '—';
+      const apK   = document.getElementById('apant-k')?.value   || '—';
+      const apS   = _apantLastResult.S != null ? _apantLastResult.S.toFixed(2) : '—';
+      const apNg  = document.getElementById('apant-ng-calc')?.value?.trim() || '—';
+      const apTd  = document.getElementById('apant-td')?.value  || '—';
+      const apA   = document.getElementById('apant-area')?.value || '—';
+
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
+      doc.text('Parámetros del modelo EGM', 14, ya);
+      ya += 4;
+      doc.autoTable({
+        startY: ya,
+        head: [['Parámetro', 'Valor', 'Unidad']],
+        body: [
+          ['BIL — Nivel básico de impulso', apBIL, 'kV'],
+          ['Zs — Impedancia de descarga',   apZs,  'Ω'],
+          ['k — Factor de forma',           apK,   '—'],
+          ['S — Radio de esfera rodante',   apS,   'm'],
+          ['Ng — Densidad de descargas',    apNg,  'flashes/km²·año'],
+          ['Td — Días de tormenta al año',  apTd,  'días'],
+          ['A — Área de la subestación',    apA,   'm²'],
+        ],
+        styles:     { fontSize: 9, cellPadding: 3 },
+        headStyles: { fillColor: [10, 61, 145], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [238, 243, 255] },
+        columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 60 }, 2: { cellWidth: 60 } },
+        margin: { left: 14, right: 14 },
+      });
+      ya = doc.lastAutoTable.finalY + 10;
+
+      // Tabla estadística IEEE 998 (solo si Ng y A son válidos)
+      const ngNum = parseFloat(apNg);
+      const aNum  = parseFloat(apA);
+      if (ngNum > 0 && aNum > 0) {
+        const bilN = parseFloat(apBIL) || 350;
+        const zsN  = parseFloat(apZs)  || 300;
+        const kN   = parseFloat(apK)   || 1.2;
+        const IsN  = (2.2 * bilN) / zsN;
+        const sN   = 8 * kN * Math.pow(IsN, 0.65);
+        const NsN  = ngNum * aNum / 1e6;
+        const PsN  = 1 / (1 + Math.pow(IsN / 24, 2.6));
+        const PpN  = 1 - PsN;
+        const lamN = NsN * PpN;
+        const f4   = v => isFinite(v) && v !== 0 ? parseFloat(v.toPrecision(4)).toString() : (v === 0 ? '0' : 'Inf');
+
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
+        doc.text('Analisis estadistico de riesgo - IEEE Std 998', 14, ya);
+        ya += 4;
+        doc.autoTable({
+          startY: ya,
+          head: [['Variable', 'Formula', 'Valor', 'Unidad']],
+          body: [
+            ['Ns - Impactos directos esperados',   'Ng x A / 1e6',           f4(NsN),                        'impactos/año'],
+            ['Ts - Años entre impactos',            '1 / Ns',                 NsN > 0 ? f4(1/NsN) : 'Inf',    'años/impacto'],
+            ['Is - Corriente critica',              '2.2 x BIL / Zs',        f4(IsN),                        'kA'],
+            ['S - Radio de esfera',                 '8 x k x Is^0.65',       f4(sN),                         'm'],
+            ['P - Prob. superar Is',                '1/(1+(Is/24)^2.6)',      f4(PsN * 100) + ' %',           ''],
+            ['P_pen - Prob. de penetracion',        '1 - P',                  f4(PpN * 100) + ' %',           ''],
+            ['lambda - Tasa anual de penetracion',  'Ns x P_pen',             lamN > 0 ? f4(lamN) : '0',      'pen./año'],
+            ['T_pen - Años entre penetraciones',    '1 / lambda',             lamN > 0 ? f4(1/lamN) : 'Inf',  'años/pen.'],
+          ],
+          styles:     { fontSize: 8, cellPadding: 3 },
+          headStyles: { fillColor: [10, 61, 145], textColor: 255, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [238, 243, 255] },
+          columnStyles: { 0: { cellWidth: 86 }, 1: { cellWidth: 58 }, 2: { cellWidth: 30 }, 3: { cellWidth: 44 } },
+          margin: { left: 14, right: 14 },
+        });
+        ya = doc.lastAutoTable.finalY + 10;
+      }
+
+      // Tabla de verificación de equipos
+      const apVerif = _apantLastResult.verification || [];
+      if (apVerif.length > 0) {
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
+        doc.text('Verificación de equipos apantallados', 14, ya);
+        ya += 4;
+        doc.autoTable({
+          startY: ya,
+          head: [['Equipo', 'Protegidos / Total', 'Cobertura', 'Exceso máx.', 'Estado']],
+          body: apVerif.map(v => {
+            const pct = v.points_evaluated > 0
+              ? ((v.points_protected / v.points_evaluated) * 100).toFixed(1) + '%'
+              : '—';
+            return [
+              v.equipment_name || '—',
+              `${v.points_protected} / ${v.points_evaluated}`,
+              pct,
+              v.max_excess_m != null ? `+${v.max_excess_m.toFixed(2)} m` : '—',
+              v.fully_shielded ? 'PROTEGIDO' : 'SIN PROTECCION',
+            ];
+          }),
+          styles:     { fontSize: 8, cellPadding: 3 },
+          headStyles: { fillColor: [10, 61, 145], textColor: 255, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [238, 243, 255] },
+          columnStyles: { 0: { cellWidth: 55 }, 1: { cellWidth: 40 }, 2: { cellWidth: 28 }, 3: { cellWidth: 32 }, 4: { cellWidth: 38 } },
+          margin: { left: 14, right: 14 },
+          didParseCell: d => {
+            if (d.section === 'body' && d.column.index === 4) {
+              d.cell.styles.textColor = d.cell.text[0] === 'PROTEGIDO' ? [22, 163, 74] : [220, 38, 38];
+              d.cell.styles.fontStyle = 'bold';
+            }
+          },
+        });
+        ya = doc.lastAutoTable.finalY + 10;
+      }
+
+      // Recomendaciones
+      const apRecs = _apantLastResult._recs || [];
+      if (apRecs.length > 0) {
+        doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
+        doc.text('Recomendaciones correctivas', 14, ya);
+        ya += 4;
+        doc.autoTable({
+          startY: ya,
+          head: [['Propuesta', 'Razón', 'Cobertura verificada']],
+          body: apRecs.map(r => [
+            r.title || '—',
+            r.reason || '—',
+            r.validation?.equipment_coverage || '—',
+          ]),
+          styles:     { fontSize: 8, cellPadding: 3 },
+          headStyles: { fillColor: [10, 61, 145], textColor: 255, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [238, 243, 255] },
+          columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 90 }, 2: { cellWidth: 46 } },
+          margin: { left: 14, right: 14 },
+        });
+        ya = doc.lastAutoTable.finalY + 10;
+      }
+
+      // Pie de página — apantallamiento
+      doc.setFontSize(7); doc.setTextColor(150, 150, 150); doc.setFont('helvetica', 'normal');
+      doc.text(`TerraShield — Proyecto Final | Universidad del Norte · Barranquilla, Colombia | (c) ${ahora.getFullYear()}`, W / 2, pageH - 6, { align: 'center' });
+    }
+
+    doc.save(`TerraShield_${nombre}.pdf`);
+    showToast('PDF generado correctamente', 'success');
+
+  } catch (e) {
+    console.error('[exportarPDF]', e);
+    showToast('Error al generar PDF: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = btnOriginal; }
+  }
+}
+
+// Inicializar al cargar
+document.addEventListener('DOMContentLoaded', function() {
+  mallaVarillaChange();
+  mallaSuperChange();
+  mallaLoadEspaciamientos();  // poblar Dx/Dy con la geometría por defecto
+  mallaRenderHistorial([]);   // panel visible con estado vacío desde el inicio
+  mallaUpdateExportState([]); // candado activo en sidebar
+
+  // Mantener AppState.currentProject.nombre sincronizado con dg-nombre
+  const dgNombre = document.getElementById('dg-nombre');
+  if (dgNombre) {
+    dgNombre.addEventListener('input', function() {
+      const v = this.value.trim();
+      if (AppState.currentProject) {
+        AppState.currentProject.nombre = v;
+      } else if (v) {
+        AppState.currentProject = { nombre: v };
+      }
+    });
+  }
+});
+
+/* =============================================
+   VISUALIZACIÓN — Plotly.js
+   ============================================= */
+
+const VIZ_COLORS = {
+  conductor: '#2F6FCC',
+  varilla:   '#F5C400',
+  borde:     '#0A3D91',
+  superficie:'rgba(143,179,232,0.18)',
+  fondo:     'rgba(0,0,0,0)',
+  grid:      'rgba(208,218,232,0.5)',
+};
+
+const PLOTLY_LAYOUT_BASE = {
+  paper_bgcolor: 'rgba(0,0,0,0)',
+  plot_bgcolor:  'rgba(0,0,0,0)',
+  font: { family: 'DM Sans, sans-serif', size: 11, color: '#4A5E7A' },
+  margin: { l: 40, r: 20, t: 30, b: 40 },
+};
+
+function mallaSwitchTab(tab) {
+  document.getElementById('viz-2d').style.display = tab === '2d' ? '' : 'none';
+  document.getElementById('viz-3d').style.display = tab === '3d' ? '' : 'none';
+  document.getElementById('viz-tab-2d').className = tab === '2d' ? 'btn btn-primary' : 'btn btn-secondary';
+  document.getElementById('viz-tab-3d').className = tab === '3d' ? 'btn btn-primary' : 'btn btn-secondary';
+  document.getElementById('viz-tab-2d').style.cssText = 'height:28px;font-size:0.72rem;padding:0 14px;';
+  document.getElementById('viz-tab-3d').style.cssText = 'height:28px;font-size:0.72rem;padding:0 14px;';
+  // Plotly necesita resize al hacerse visible
+  setTimeout(() => Plotly.Plots.resize(tab === '2d' ? 'viz-2d' : 'viz-3d'), 50);
+}
+
+// ── Construir geometría de conductores y varillas ──────────────────────────
+
+function buildGridGeometry(p, s3) {
+  const forma = parseInt(p.forma);
+  const uv    = parseInt(p.uv || 0);
+  const lines = [];
+  const rods  = [];
+
+  // uv=4 con posiciones custom: construir líneas normalmente pero usar coords exactas para varillas
+  if (uv === 4 && Array.isArray(p.varillas_custom)) {
+    p.varillas_custom.forEach(({ x, y }) => rods.push({ x, y }));
+    // Still need to build lines — continue with uv treated as 0 for line drawing
+    const pLines = Object.assign({}, p, { uv: 0 });
+    return Object.assign(buildGridGeometry(pLines, s3), { rods });
+  }
+
+  // Agrega un segmento solo si tiene longitud real
+  const seg = (x0, y0, x1, y1) => {
+    if (Math.hypot(x1 - x0, y1 - y0) > 1e-9) lines.push({ x: [x0, x1], y: [y0, y1] });
+  };
+
+  // ── Formas rectangulares: 1 (rect), 6 (L), 7 (T) ─────────────────────────
+  if (forma === 1 || forma === 6 || forma === 7) {
+    const Lx = parseFloat(p.Lx || 0), Ly = parseFloat(p.Ly || 0);
+    const Dx = parseFloat(p.Dx || 0), Dy = parseFloat(p.Dy || 0);
+    const Nx = s3.Nx || 0, Ny = s3.Ny || 0;
+    // Valores ajustados vienen del backend (sec3)
+    const Lx1_aj = s3.Lx1_aj || 0, Ly1_aj = s3.Ly1_aj || 0;
+    const Lx2_aj = s3.Lx2_aj || 0, Ly2_aj = s3.Ly2_aj || 0;
+    const Nx1 = s3.Nx1 || 0, Ny1 = s3.Ny1 || 0;
+    const Nx2 = s3.Nx2 || 0, Ny2 = s3.Ny2 || 0;
+
+    // Decides si el nodo (i=fila, j=col) es válido dentro de la forma
+    const isValid = (i, j) => {
+      if (i < 0 || i >= Nx || j < 0 || j >= Ny) return false;
+      if (forma === 6) return !(i >= Nx - Nx1 && j >= Ny - Ny1);
+      if (forma === 7) return !(i >= Nx - Nx1 && j < Ny1) && !(i >= Nx - Nx2 && j >= Ny - Ny2);
+      return true;
+    };
+
+    // Líneas horizontales (y = i·Dx, paralelas al eje X)
+    for (let i = 0; i < Nx; i++) {
+      const y = i * Dx;
+      if (forma === 1) {
+        seg(0, y, Lx, y);
+      } else if (forma === 6) {
+        // Zona superior → recortada por la derecha
+        seg(0, y, i >= Nx - Nx1 ? Lx - Lx1_aj : Lx, y);
+      } else { // 7: zona superior recortada por ambos lados
+        const x0 = (i >= Nx - Nx1) ? Lx1_aj : 0;
+        const x1 = (i >= Nx - Nx2) ? Lx - Lx2_aj : Lx;
+        seg(x0, y, x1, y);
+      }
+    }
+
+    // Líneas verticales (x = j·Dy, paralelas al eje Y)
+    for (let j = 0; j < Ny; j++) {
+      const x = j * Dy;
+      if (forma === 1) {
+        seg(x, 0, x, Ly);
+      } else if (forma === 6) {
+        // Zona derecha → recortada por arriba
+        seg(x, 0, x, j >= Ny - Ny1 ? Ly - Ly1_aj : Ly);
+      } else { // 7: zona izquierda y derecha recortadas por arriba
+        const y1 = (j < Ny1) ? Ly - Ly1_aj : (j >= Ny - Ny2) ? Ly - Ly2_aj : Ly;
+        seg(x, 0, x, y1);
+      }
+    }
+
+    // Varillas — todos los nodos válidos de la grilla
+    const validNodes = [];
+    for (let i = 0; i < Nx; i++) for (let j = 0; j < Ny; j++) {
+      if (isValid(i, j)) validNodes.push({ i, j, x: j * Dy, y: i * Dx });
+    }
+
+    if (uv === 1) {
+      // Vértices de la forma
+      if (forma === 1) {
+        [[0,0],[Lx,0],[0,Ly],[Lx,Ly]].forEach(([x,y]) => rods.push({x,y}));
+      } else if (forma === 6) {
+        [[0,0],[Lx,0],[Lx,Ly-Ly1_aj],[Lx-Lx1_aj,Ly-Ly1_aj],[Lx-Lx1_aj,Ly],[0,Ly]]
+          .forEach(([x,y]) => rods.push({x,y}));
+      } else {
+        [[0,0],[Lx,0],[Lx,Ly-Ly2_aj],[Lx-Lx2_aj,Ly-Ly2_aj],
+         [Lx-Lx2_aj,Ly],[Lx1_aj,Ly],[Lx1_aj,Ly-Ly1_aj],[0,Ly-Ly1_aj]]
+          .forEach(([x,y]) => rods.push({x,y}));
+      }
+    } else if (uv === 2) {
+      // Nodos en el perímetro: al menos un vecino ortogonal inválido
+      validNodes.forEach(({ i, j, x, y }) => {
+        const onEdge = [[i+1,j],[i-1,j],[i,j+1],[i,j-1]]
+          .some(([ni,nj]) => !isValid(ni, nj));
+        if (onEdge) rods.push({ x, y });
+      });
+      // Esquinas interiores del recorte: no son nodos de la grilla pero sí
+      // están en el perímetro real de la forma L/T
+      if (forma === 6) {
+        rods.push({ x: Lx - Lx1_aj, y: Ly - Ly1_aj });
+      } else if (forma === 7) {
+        rods.push({ x: Lx1_aj,      y: Ly - Ly1_aj });
+        rods.push({ x: Lx - Lx2_aj, y: Ly - Ly2_aj });
+      }
+    } else if (uv === 3) {
+      validNodes.forEach(n => rods.push({ x: n.x, y: n.y }));
+    }
+
+  } else {
+    // ── Formas triangulares ────────────────────────────────────────────────
+    let A, B, C, n_tri;
+
+    if (forma === 2) {
+      // Equilátero: vértices A=(0,0), B=(L,0), C=(L/2, h)
+      const L = parseFloat(p.L || 0);
+      A = [0, 0]; B = [L, 0]; C = [L / 2, L * Math.sqrt(3) / 2];
+      n_tri = s3.Nx || 0;
+
+    } else if (forma === 3) {
+      // Isósceles: A=(0,0), B=(Lb,0), C=(Lb/2, h_iso)
+      const Lb = parseFloat(p.Lb || 0), Li = parseFloat(p.Li || 0);
+      A = [0, 0]; B = [Lb, 0];
+      C = [Lb / 2, Math.sqrt(Math.max(Li * Li - (Lb / 2) ** 2, 0))];
+      n_tri = s3.Nx || 0;
+
+    } else if (forma === 4) {
+      // Tri. rectángulo: ángulo recto en A=(0,0), B=(Lx,0), C=(0,Ly)
+      A = [0, 0]; B = [parseFloat(p.Lx || 0), 0]; C = [0, parseFloat(p.Ly || 0)];
+      n_tri = s3.Nx || 0;
+
+    } else if (forma === 5) {
+      // Escaleno: A=(0,0), B=(La,0), C según ley de cosenos
+      const La = parseFloat(p.La || 0);
+      const Lb_e = parseFloat(p.Lb_e || 0);
+      const Lc_e = parseFloat(p.Lc_e || 0);
+      // Ángulo en A entre lados La (hacia B) y Lb_e (hacia C)
+      const cosA = (La * La + Lb_e * Lb_e - Lc_e * Lc_e) / (2 * La * Lb_e);
+      A = [0, 0]; B = [La, 0];
+      C = [Lb_e * cosA, Lb_e * Math.sqrt(Math.max(1 - cosA * cosA, 0))];
+      n_tri = s3.Nx || 0;
+    }
+
+    if (n_tri > 0) {
+      // Para cada uno de los 3 lados: dibuja n_tri líneas paralelas desde el vértice opuesto
+      // i=1..n_tri → i=n_tri dibuja el propio lado (borde)
+      const drawParallels = (P0, P1, Popp) => {
+        for (let i = 1; i <= n_tri; i++) {
+          const t = i / n_tri;
+          seg(Popp[0] + t * (P0[0] - Popp[0]), Popp[1] + t * (P0[1] - Popp[1]),
+              Popp[0] + t * (P1[0] - Popp[0]), Popp[1] + t * (P1[1] - Popp[1]));
+        }
+      };
+      drawParallels(A, B, C);  // paralelas al lado AB, desde C
+      drawParallels(B, C, A);  // paralelas al lado BC, desde A
+      drawParallels(C, A, B);  // paralelas al lado CA, desde B
+    }
+
+    // Varillas para triángulos
+    if (uv === 1) {
+      rods.push({ x: A[0], y: A[1] }, { x: B[0], y: B[1] }, { x: C[0], y: C[1] });
+
+    } else if (uv === 2) {
+      // 3·n nodos en el perímetro: n nodos por lado (t = 1/n .. n/n)
+      for (let i = 1; i <= n_tri; i++) {
+        const t = i / n_tri;
+        rods.push({ x: A[0] + t*(B[0]-A[0]), y: A[1] + t*(B[1]-A[1]) }); // AB
+        rods.push({ x: B[0] + t*(C[0]-B[0]), y: B[1] + t*(C[1]-B[1]) }); // BC
+        rods.push({ x: C[0] + t*(A[0]-C[0]), y: C[1] + t*(A[1]-C[1]) }); // CA
+      }
+    } else if (uv === 3) {
+      // Todos los nodos: (n+1)(n+2)/2 usando coordenadas baricéntricas
+      for (let k = 0; k <= n_tri; k++) {
+        for (let j = 0; j <= n_tri - k; j++) {
+          const ii = n_tri - k - j;
+          rods.push({
+            x: (ii * A[0] + j * B[0] + k * C[0]) / n_tri,
+            y: (ii * A[1] + j * B[1] + k * C[1]) / n_tri,
+          });
+        }
+      }
+    }
+  }
+
+  return { lines, rods };
+}
+
+// ── Vista 2D ──────────────────────────────────────────────────────────────
+
+function mallaRender2D(p, s3) {
+  const { lines, rods } = buildGridGeometry(p, s3);
+  const traces = [];
+
+  // Conductores — todas las líneas como un solo trace con NaN para separar
+  const lx = [], ly = [];
+  lines.forEach(l => { lx.push(...l.x, null); ly.push(...l.y, null); });
+  traces.push({
+    x: lx, y: ly, type: 'scatter', mode: 'lines',
+    line: { color: VIZ_COLORS.conductor, width: 2 },
+    name: 'Conductor',
+    hoverinfo: 'none',
+  });
+
+  // Varillas
+  if (rods.length) {
+    traces.push({
+      x: rods.map(r => r.x), y: rods.map(r => r.y),
+      type: 'scatter', mode: 'markers',
+      marker: { color: VIZ_COLORS.varilla, size: 9, symbol: 'circle',
+                line: { color: VIZ_COLORS.borde, width: 1.5 } },
+      name: 'Varilla',
+      hovertemplate: 'Varilla<br>x=%{x:.1f} m, y=%{y:.1f} m<extra></extra>',
+    });
+  }
+
+  // Anotaciones de cotas según forma
+  const annotations = [];
+  const forma = parseInt(p.forma);
+  if (forma === 1 || forma === 6 || forma === 7) {
+    const Lx = parseFloat(p.Lx||0), Ly = parseFloat(p.Ly||0);
+    const Dx = parseFloat(p.Dx||0), Dy = parseFloat(p.Dy||0);
+    annotations.push(
+      { x: Lx/2, y: -Ly*0.09, text: `Lx = ${Lx} m`, showarrow: false,
+        font:{size:10,color:VIZ_COLORS.borde}, xanchor:'center' },
+      { x: Lx*1.07, y: Ly/2, text: `Ly = ${Ly} m`, showarrow: false,
+        font:{size:10,color:VIZ_COLORS.borde}, xanchor:'left', textangle:-90 },
+    );
+    if (Dx > 0 && s3.Nx > 1) annotations.push(
+      { x: -Lx*0.07, y: Dx/2, text: `Dx = ${Dx} m`, showarrow:true,
+        ax:-35, ay:0, font:{size:9,color:'#4A5E7A'} }
+    );
+    if (Dy > 0 && s3.Ny > 1) annotations.push(
+      { x: Dy/2, y: -Ly*0.05, text: `Dy = ${Dy} m`, showarrow:true,
+        ax:0, ay:28, font:{size:9,color:'#4A5E7A'} }
+    );
+  } else if (forma === 2) {
+    const L = parseFloat(p.L||0), D = parseFloat(p.D||0);
+    const hTri = L * Math.sqrt(3) / 2;
+    // Dimensión principal: debajo del lado base
+    annotations.push(
+      { x: L/2, y: -hTri*0.09, text: `L = ${L} m`,
+        showarrow:false, font:{size:10,color:VIZ_COLORS.borde}, xanchor:'center' }
+    );
+    // Espaciamiento: a la derecha del triángulo, fuera del perímetro
+    annotations.push(
+      { x: L*1.08, y: hTri/2, text: `D = ${D} m`,
+        showarrow:false, font:{size:9,color:'#4A5E7A'}, xanchor:'left' }
+    );
+  } else if (forma === 3) {
+    const Lb = parseFloat(p.Lb||0), Li = parseFloat(p.Li||0), Db = parseFloat(p.Db||0);
+    const hIso = Math.sqrt(Math.max(Li*Li - (Lb/2)**2, 0));
+    const Di = Db > 0 && Lb > 0 ? (Db * Li / Lb).toFixed(3) : '—';
+    // Dimensiones: debajo de la base y a la izquierda del lado Li
+    annotations.push(
+      { x: Lb/2, y: -hIso*0.09, text: `Lb = ${Lb} m`,
+        showarrow:false, font:{size:10,color:VIZ_COLORS.borde}, xanchor:'center' },
+      { x: -Lb*0.08, y: hIso/2, text: `Li = ${Li} m`,
+        showarrow:false, font:{size:10,color:VIZ_COLORS.borde}, xanchor:'right', textangle:-90 }
+    );
+    // Espaciamientos: a la derecha del triángulo, fuera del perímetro
+    annotations.push(
+      { x: Lb*1.06, y: hIso*0.6, text: `Db = ${Db} m`,
+        showarrow:false, font:{size:9,color:'#4A5E7A'}, xanchor:'left' },
+      { x: Lb*1.06, y: hIso*0.4, text: `Di = ${Di} m`,
+        showarrow:false, font:{size:9,color:'#4A5E7A'}, xanchor:'left' }
+    );
+  } else if (forma === 4) {
+    const Lx = parseFloat(p.Lx||0), Ly = parseFloat(p.Ly||0), D1 = parseFloat(p.D1||0);
+    const D2 = D1 > 0 && Lx > 0 ? (D1 * Ly / Lx).toFixed(3) : '—';
+    const D3 = D1 > 0 && Lx > 0 ? (D1 * Math.hypot(Lx, Ly) / Lx).toFixed(3) : '—';
+    // Dimensiones: debajo del cateto H y a la izquierda del cateto V
+    annotations.push(
+      { x: Lx/2, y: -Ly*0.09, text: `Lx = ${Lx} m`,
+        showarrow:false, font:{size:10,color:VIZ_COLORS.borde}, xanchor:'center' },
+      { x: -Lx*0.08, y: Ly/2, text: `Ly = ${Ly} m`,
+        showarrow:false, font:{size:10,color:VIZ_COLORS.borde}, xanchor:'right', textangle:-90 }
+    );
+    // Espaciamientos: a la derecha, fuera de la hipotenusa
+    annotations.push(
+      { x: Lx*1.06, y: Ly*0.70, text: `D1 = ${D1} m`,
+        showarrow:false, font:{size:9,color:'#4A5E7A'}, xanchor:'left' },
+      { x: Lx*1.06, y: Ly*0.50, text: `D2 = ${D2} m`,
+        showarrow:false, font:{size:9,color:'#4A5E7A'}, xanchor:'left' },
+      { x: Lx*1.06, y: Ly*0.30, text: `D3 = ${D3} m`,
+        showarrow:false, font:{size:9,color:'#4A5E7A'}, xanchor:'left' }
+    );
+  } else if (forma === 5) {
+    const La = parseFloat(p.La||0), Lb_e = parseFloat(p.Lb_e||0), Lc_e = parseFloat(p.Lc_e||0);
+    const D1 = parseFloat(p.D1_esc||0);
+    const D2 = D1 > 0 && La > 0 ? (D1 * Lb_e / La).toFixed(3) : '—';
+    const D3 = D1 > 0 && La > 0 ? (D1 * Lc_e / La).toFixed(3) : '—';
+    const cosAng = (La*La + Lb_e*Lb_e - Lc_e*Lc_e) / (2*La*Lb_e);
+    const hEsc = Lb_e * Math.sqrt(Math.max(1 - cosAng*cosAng, 0));
+    // Dimensión La: debajo de la base
+    annotations.push(
+      { x: La/2, y: -hEsc*0.09, text: `La = ${La} m`,
+        showarrow:false, font:{size:10,color:VIZ_COLORS.borde}, xanchor:'center' },
+      { x: -La*0.08, y: hEsc/2, text: `Lb = ${Lb_e} m`,
+        showarrow:false, font:{size:10,color:VIZ_COLORS.borde}, xanchor:'right', textangle:-90 }
+    );
+    // Espaciamientos: a la derecha, fuera del triángulo
+    annotations.push(
+      { x: La*1.06, y: hEsc*0.70, text: `D1 = ${D1} m`,
+        showarrow:false, font:{size:9,color:'#4A5E7A'}, xanchor:'left' },
+      { x: La*1.06, y: hEsc*0.50, text: `D2 = ${D2} m`,
+        showarrow:false, font:{size:9,color:'#4A5E7A'}, xanchor:'left' },
+      { x: La*1.06, y: hEsc*0.30, text: `D3 = ${D3} m`,
+        showarrow:false, font:{size:9,color:'#4A5E7A'}, xanchor:'left' }
+    );
+  }
+
+  const layout = {
+    ...PLOTLY_LAYOUT_BASE,
+    xaxis: { title:'m', showgrid:true, gridcolor:VIZ_COLORS.grid, zeroline:false, scaleanchor:'y' },
+    yaxis: { title:'m', showgrid:true, gridcolor:VIZ_COLORS.grid, zeroline:false },
+    legend: { orientation:'h', x:0, y:1.06 },
+    annotations,
+    title: {
+      text: `Área = ${s3.A} m²  ·  Lc = ${s3.Lc} m  ·  nR = ${s3.nR} varillas`,
+      font: { size: 12, color: '#4A5E7A' }, x: 0.5, xanchor: 'center',
+    },
+    showlegend: true,
+    hovermode: 'closest',
+  };
+
+  Plotly.react('viz-2d', traces, layout, { responsive: true, displayModeBar: false });
+}
+
+// ── Vista 3D ──────────────────────────────────────────────────────────────
+
+function mallaRender3D(p, s3) {
+  const { lines, rods } = buildGridGeometry(p, s3);
+  const h  = parseFloat(p.h  || 0.5);
+  const Lr = parseFloat(p.Lr || 1.8);
+  const traces = [];
+
+  // Conductores enterrados a –h
+  const lx = [], ly = [], lz = [];
+  lines.forEach(l => {
+    lx.push(l.x[0], l.x[1], null);
+    ly.push(l.y[0], l.y[1], null);
+    lz.push(-h, -h, null);
+  });
+  traces.push({
+    x: lx, y: ly, z: lz, type: 'scatter3d', mode: 'lines',
+    line: { color: VIZ_COLORS.conductor, width: 4 },
+    name: 'Conductores',
+    hoverinfo: 'none',
+  });
+
+  // Varillas: líneas verticales desde –h hasta –h–Lr
+  if (rods.length) {
+    const rx = [], ry = [], rz = [];
+    rods.forEach(r => {
+      rx.push(r.x, r.x, null);
+      ry.push(r.y, r.y, null);
+      rz.push(-h, -h - Lr, null);
+    });
+    traces.push({
+      x: rx, y: ry, z: rz, type: 'scatter3d', mode: 'lines',
+      line: { color: VIZ_COLORS.varilla, width: 5 },
+      name: 'Varillas',
+      hoverinfo: 'none',
+    });
+    traces.push({
+      x: rods.map(r => r.x), y: rods.map(r => r.y), z: rods.map(() => -h),
+      type: 'scatter3d', mode: 'markers',
+      marker: { color: VIZ_COLORS.varilla, size: 4,
+                line: { color: VIZ_COLORS.borde, width: 1 } },
+      name: 'Nodo varilla',
+      hovertemplate: 'x=%{x:.1f} m<br>y=%{y:.1f} m<br>prof.=%{customdata:.2f} m<extra></extra>',
+      customdata: rods.map(() => h),
+      showlegend: false,
+    });
+  }
+
+  // Superficie del terreno (z=0) — plano semitransparente que cubre el bounding box
+  const allX = lines.flatMap(l => l.x).filter(v => v !== null);
+  const allY = lines.flatMap(l => l.y).filter(v => v !== null);
+  const xMin = Math.min(0, ...allX), xMax = Math.max(1, ...allX);
+  const yMin = Math.min(0, ...allY), yMax = Math.max(1, ...allY);
+  traces.push({
+    x: [[xMin, xMax], [xMin, xMax]], y: [[yMin, yMin], [yMax, yMax]], z: [[0,0],[0,0]],
+    type: 'surface',
+    colorscale: [[0, 'rgba(143,179,232,0.25)'], [1, 'rgba(143,179,232,0.25)']],
+    showscale: false, name: 'Superficie terreno', hoverinfo: 'none',
+    opacity: 0.5,
+    contours: { x:{highlight:false}, y:{highlight:false}, z:{highlight:false} },
+  });
+
+  // ── Escala real: misma unidad en X, Y y Z ──────────────────────────────
+  // Se usa aspectmode:'data' para que 1 m en profundidad = 1 m en planta.
+  // Si las varillas se ven pequeñas respecto a la malla, es correcto —
+  // la nota al pie lo explica al usuario.
+  const zDepth = h + Lr;
+  const xySpan = Math.max(xMax - xMin, yMax - yMin, 1);
+
+  const sceneAnnotations = [
+    { x: xMin, y: yMin, z: -h,
+      text: `h = ${h} m`, showarrow: true, arrowhead: 2, arrowsize: 1,
+      ax: 60, ay: -20,
+      font: { size: 11, color: VIZ_COLORS.borde },
+      bgcolor: 'rgba(255,255,255,0.7)', borderpad: 3 },
+  ];
+  if (rods.length) {
+    sceneAnnotations.push({
+      x: rods[0].x, y: rods[0].y, z: -h - Lr / 2,
+      text: `Lr = ${Lr} m`, showarrow: false,
+      font: { size: 11, color: '#C49A00' },
+      bgcolor: 'rgba(255,255,255,0.7)', borderpad: 3,
+    });
+  }
+
+  const layout = {
+    ...PLOTLY_LAYOUT_BASE,
+    margin: { l: 0, r: 0, t: 56, b: 0 },
+    scene: {
+      bgcolor: 'rgba(0,0,0,0)',
+      aspectmode: 'data',   // misma escala métrica en los 3 ejes
+      xaxis: { title: 'X (m)', gridcolor: VIZ_COLORS.grid,
+               backgroundcolor: 'rgba(230,238,247,0.5)', showbackground: true },
+      yaxis: { title: 'Y (m)', gridcolor: VIZ_COLORS.grid,
+               backgroundcolor: 'rgba(230,238,247,0.5)', showbackground: true },
+      zaxis: { title: 'Prof. (m)', gridcolor: VIZ_COLORS.grid,
+               backgroundcolor: 'rgba(220,230,242,0.5)', showbackground: true,
+               range: [-(h + Lr) * 1.15, xySpan * 0.12] },
+      camera: { eye: { x: 1.5, y: -1.5, z: 0.8 } },
+      annotations: sceneAnnotations,
+    },
+    legend: { x: 0.01, y: 0.99 },
+    title: {
+      text: `Vista 3D a escala real — h = ${h} m · Lr = ${Lr} m · malla ${(xMax-xMin).toFixed(0)}×${(yMax-yMin).toFixed(0)} m<br>` +
+            `<span style="font-size:10px;color:#7A90A8;">Nota: profundidad y varillas están a escala real respecto a las dimensiones de la malla</span>`,
+      font: { size: 12, color: '#4A5E7A' }, x: 0.5, xanchor: 'center',
+    },
+  };
+
+  Plotly.react('viz-3d', traces, layout, {
+    responsive: true, displayModeBar: true,
+    modeBarButtonsToRemove: ['toImage', 'sendDataToCloud'],
+  });
+}
+
+// ── Punto de entrada ───────────────────────────────────────────────────────
+
+function mallaRenderPlots(payload, data) {
+  const s3 = data.sec3 || {};
+  mallaSwitchTab('2d');
+  mallaRender2D(payload, s3);
+  mallaRender3D(payload, s3);
+}
+</script>
+</body>
+</html>

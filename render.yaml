@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: terrashield
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python servidor.py
+    envVars:
+      - key: PORT
+        value: 8000
+    disk:
+      name: historiales
+      mountPath: /opt/render/project/src/historiales
+      sizeGB: 1
