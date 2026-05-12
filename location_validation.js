@@ -44,11 +44,10 @@ function getNgFromGrid(lat, lon) {
 }
 
 // Datos de suelos IEEE 80 — consultados al servidor vía API (sin descarga masiva)
-// El servidor carga suelos_data_v2.json una sola vez en memoria al arrancar.
 async function getSueloFromAPI(lat, lon) {
   try {
     const res = await fetch(`/suelo?lat=${lat}&lon=${lon}`);
-    if (!res.ok) return null;
+    if (!res.ok || res.status === 204) return null;
     return await res.json();
   } catch {
     console.warn('API /suelo no disponible — se usará valor por defecto');
@@ -56,15 +55,24 @@ async function getSueloFromAPI(lat, lon) {
   }
 }
 
+// Traducción de clasificaciones de suelo IEEE 80 al español
+const SOIL_TYPE_ES = {
+  'Dry Soil':         'Suelo Seco',
+  'Moist Soil':       'Suelo Húmedo',
+  'Wet Soil':         'Suelo Mojado',
+  'Wet Organic Soil': 'Suelo Orgánico Húmedo',
+};
+function traducirSuelo(tipo) { return SOIL_TYPE_ES[tipo] || tipo; }
+
 // Datos de referencia por departamento (coordenadas, municipio, temperatura)
 const deptData = {
-  'La Guajira': { lat: 11.5444, lon: -72.9072, municipio: 'Riohacha',     ng: 12.4, temp: 29.2 },
-  'Magdalena':  { lat: 11.2408, lon: -74.2011, municipio: 'Santa Marta',  ng: 14.8, temp: 28.5 },
-  'Atlántico':  { lat: 10.9639, lon: -74.7964, municipio: 'Barranquilla', ng: 15.2, temp: 27.9 },
-  'Bolívar':    { lat: 10.3910, lon: -75.4794, municipio: 'Cartagena',    ng: 13.6, temp: 28.2 },
-  'Sucre':      { lat: 9.3047,  lon: -75.3978, municipio: 'Sincelejo',    ng: 16.1, temp: 29.0 },
-  'Córdoba':    { lat: 8.7479,  lon: -75.8814, municipio: 'Montería',     ng: 17.3, temp: 28.8 },
-  'Cesar':      { lat: 10.4631, lon: -73.2532, municipio: 'Valledupar',   ng: 11.9, temp: 30.1 }
+  'La Guajira': { lat: 11.5444, lon: -72.9072, municipio: 'Riohacha',     ng: 12.4, temp: 29.2, tipoSuelo: 'Suelo Seco',              rhoSuelo: 1000 },
+  'Magdalena':  { lat: 11.2408, lon: -74.2011, municipio: 'Santa Marta',  ng: 14.8, temp: 28.5, tipoSuelo: 'Suelo Húmedo',            rhoSuelo: 100  },
+  'Atlántico':  { lat: 10.9639, lon: -74.7964, municipio: 'Barranquilla', ng: 15.2, temp: 27.9, tipoSuelo: 'Suelo Húmedo',            rhoSuelo: 100  },
+  'Bolívar':    { lat: 10.3910, lon: -75.4794, municipio: 'Cartagena',    ng: 13.6, temp: 28.2, tipoSuelo: 'Suelo Orgánico Húmedo',   rhoSuelo: 10   },
+  'Sucre':      { lat: 9.3047,  lon: -75.3978, municipio: 'Sincelejo',    ng: 16.1, temp: 29.0, tipoSuelo: 'Suelo Húmedo',            rhoSuelo: 100  },
+  'Córdoba':    { lat: 8.7479,  lon: -75.8814, municipio: 'Montería',     ng: 17.3, temp: 28.8, tipoSuelo: 'Suelo Húmedo',            rhoSuelo: 100  },
+  'Cesar':      { lat: 10.4631, lon: -73.2532, municipio: 'Valledupar',   ng: 11.9, temp: 30.1, tipoSuelo: 'Suelo Húmedo',            rhoSuelo: 100  }
 };
 
 const CARIBE_BOUNDS = { latMin: 8.0, latMax: 12.5, lonMin: -76.5, lonMax: -71.0 };
@@ -240,7 +248,7 @@ async function validarUbicacion() {
     let ngFuente  = '';
     let ngDisplay = ng !== null ? ng.toFixed(4) : 'No disponible';
 
-    // 5. Tipo de suelo IEEE 80 — consultado al servidor (no descarga local)
+    // 5. Tipo de suelo IEEE 80 — desde suelos_data_v2.json o fallback
     let tipoSuelo   = 'Suelo Húmedo'; // fallback por defecto (Moist Soil)
     let rhoSuelo    = 100;
     let sueloFuente = 'Valor por defecto (Moist Soil)';
@@ -260,7 +268,7 @@ async function validarUbicacion() {
         sueloFuente = null;
         sueloNota   = 'La información encontrada para este punto es ambigua y no permite una clasificación preliminar confiable.';
       } else {
-        tipoSuelo   = sueloData.tipo_suelo;
+        tipoSuelo   = traducirSuelo(sueloData.tipo_suelo);
         rhoSuelo    = sueloData.rho;
         sueloFuente = null;
       }
@@ -270,6 +278,20 @@ async function validarUbicacion() {
       rhoSuelo    = null;
       sueloFuente = null;
       sueloNota   = 'No hay datos suficientes para clasificar el tipo de suelo en este punto.';
+    }
+
+    // Fallback para capitales de departamento: si el punto coincide con una entrada
+    // predefinida en deptData, usar el tipo de suelo de referencia en lugar de "No clasificable"
+    if (tipoSuelo === 'No clasificable') {
+      const deptEntry = Object.values(deptData).find(d =>
+        Math.abs(d.lat - lat) < 0.0001 && Math.abs(d.lon - lon) < 0.0001
+      );
+      if (deptEntry?.tipoSuelo) {
+        tipoSuelo   = deptEntry.tipoSuelo;
+        rhoSuelo    = deptEntry.rhoSuelo;
+        sueloFuente = null;
+        sueloNota   = null;
+      }
     }
 
     AppState.locationValidated = true;

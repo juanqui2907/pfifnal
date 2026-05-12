@@ -34,24 +34,21 @@ os.makedirs(HISTORIALES_DIR, exist_ok=True)
 
 # ─── Base de datos SQLite de suelos ───────────────────────────────────────────
 # suelos.db se genera localmente con convertir_suelos.py y se sube al repo.
-# El servidor abre una conexión por hilo (check_same_thread=False) y consulta
-# solo los polígonos cuyo bounding box toca el punto. Usa ~5 MB de RAM.
-_DB_PATH = os.path.join(BASE_DIR, 'suelos.db')
+# El cliente llama GET /suelo?lat=X&lon=Y — recibe solo el polígono que necesita.
+_DB_PATH      = os.path.join(BASE_DIR, 'suelos.db')
 _db_disponible = os.path.exists(_DB_PATH)
 
 if _db_disponible:
-    print(f'[suelos] suelos.db encontrado — endpoint /suelo activo ✓', flush=True)
+    print('[suelos] suelos.db encontrado — endpoint /suelo activo ✓', flush=True)
 else:
     print('[suelos] suelos.db no encontrado — endpoint /suelo deshabilitado', flush=True)
 
 def _get_db():
-    """Devuelve una conexión SQLite (una por hilo, reutilizable)."""
-    import threading as _th
     local = _get_db._local
     if not hasattr(local, 'con'):
-        local.con = sqlite3.connect(_DB_PATH, check_same_thread=False)
+        import sqlite3 as _sq
+        local.con = _sq.connect(_DB_PATH, check_same_thread=False)
     return local.con
-
 _get_db._local = __import__('threading').local()
 
 def _ray_cast(point, ring):
@@ -69,7 +66,6 @@ def _ray_cast(point, ring):
 
 def _point_in_geojson(lon, lat, geometry):
     px, py = lon, lat
-
     def in_poly(coords):
         if not _ray_cast((px, py), coords[0]):
             return False
@@ -77,7 +73,6 @@ def _point_in_geojson(lon, lat, geometry):
             if _ray_cast((px, py), hole):
                 return False
         return True
-
     gt = geometry.get('type')
     if gt == 'Polygon':
         return in_poly(geometry['coordinates'])
@@ -86,14 +81,8 @@ def _point_in_geojson(lon, lat, geometry):
     return False
 
 def _query_suelo(lat, lon):
-    """
-    Consulta suelos.db filtrando primero por bounding box (índice SQLite),
-    luego hace ray-casting solo sobre los candidatos (~5-20 polígonos).
-    Usa memoria mínima, no carga nada en RAM al arrancar.
-    """
     if not _db_disponible:
         return None
-
     con = _get_db()
     cur = con.execute(
         '''SELECT tipo_suelo, subtipo_nc, categoria, rho, confianza, geometry
@@ -106,13 +95,8 @@ def _query_suelo(lat, lon):
         tipo_suelo, subtipo_nc, categoria, rho, confianza, geom_json = row
         geom = json.loads(geom_json)
         if _point_in_geojson(lon, lat, geom):
-            return {
-                'tipo_suelo': tipo_suelo,
-                'subtipo_nc': subtipo_nc,
-                'categoria':  categoria,
-                'rho':        rho,
-                'confianza':  confianza,
-            }
+            return {'tipo_suelo': tipo_suelo, 'subtipo_nc': subtipo_nc,
+                    'categoria': categoria, 'rho': rho, 'confianza': confianza}
     return None
 
 # ─── Helpers de historial ─────────────────────────────────────────────────────
@@ -135,6 +119,22 @@ def _load_hist(nombre):
 def _save_hist(nombre, hist):
     with open(_hist_path(nombre), 'w', encoding='utf-8') as f:
         json.dump(hist, f, ensure_ascii=False, indent=2)
+
+# ─── API: Tipo de suelo IEEE 80 por coordenadas ───────────────────────────────
+
+@app.route('/suelo', methods=['GET'])
+def get_suelo():
+    try:
+        lat = float(request.args['lat'])
+        lon = float(request.args['lon'])
+    except (KeyError, ValueError):
+        return jsonify({'error': 'Parámetros lat y lon requeridos (decimales)'}), 400
+    if not _db_disponible:
+        return jsonify({'error': 'Base de datos de suelos no disponible'}), 503
+    resultado = _query_suelo(lat, lon)
+    if resultado is None:
+        return ('', 204)
+    return jsonify(resultado)
 
 # ─── Archivos estáticos ───────────────────────────────────────────────────────
 
@@ -476,39 +476,6 @@ def exportar_pdf(nombre):
     fname = f"TerraShield_{_safe_nombre(nombre)}.pdf"
     return send_file(output, as_attachment=True, download_name=fname,
                      mimetype='application/pdf')
-
-# ─── API: Tipo de suelo IEEE 80 por coordenadas ───────────────────────────────
-
-@app.route('/suelo', methods=['GET'])
-def get_suelo():
-    """
-    Consulta el tipo de suelo IEEE 80 para un punto lat/lon.
-    El JSON (194 MB) se carga una sola vez en memoria al arrancar el servidor.
-    El cliente recibe solo el resultado del polígono que contiene el punto.
-
-    Query params:
-        lat  — latitud  decimal (ej. 10.39)
-        lon  — longitud decimal (ej. -75.47)
-
-    Respuesta:
-        200 + {tipo_suelo, subtipo_nc, categoria, rho, confianza}
-        204 (sin contenido) si el punto no cae en ningún polígono
-        503 si el índice aún no terminó de cargar
-    """
-    try:
-        lat = float(request.args['lat'])
-        lon = float(request.args['lon'])
-    except (KeyError, ValueError):
-        return jsonify({'error': 'Parámetros lat y lon requeridos (decimales)'}), 400
-
-    if not _db_disponible:
-        return jsonify({'error': 'Base de datos de suelos no disponible'}), 503
-
-    resultado = _query_suelo(lat, lon)
-    if resultado is None:
-        return ('', 204)   # punto fuera de cobertura
-
-    return jsonify(resultado)
 
 # ─── API: Apantallamiento ─────────────────────────────────────────────────────
 
