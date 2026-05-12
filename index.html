@@ -100,10 +100,19 @@
     </div>
 
   </div><!-- /z-index wrapper -->
-    <div class="home-credits">
-      Proyecto Final<br>
-      Universidad del Norte · Barranquilla, Colombia<br>
-      <span style="color:var(--text-light);font-family:var(--font-mono);font-size:0.65rem;">© 2026 TerraShield — Todos los derechos reservados</span>
+    <div class="home-credits" aria-label="Creditos del proyecto">
+      <div class="credits-logo-panel">
+        <img src="whiteuninortelogo.png" alt="Universidad del Norte" class="credits-logo">
+      </div>
+      <div class="credits-content">
+        <div class="credits-kicker">Proyecto Final</div>
+        <div class="credits-university">Universidad del Norte · Barranquilla, Colombia</div>
+        <div class="credits-people">
+          <div><span>Integrantes:</span> Samantha Acevedo, Samuel Aguas, Juan Quintero</div>
+          <div><span>Asesora:</span> Adriana Arango</div>
+        </div>
+        <div class="credits-copy">© 2026 TerraShield — Todos los derechos reservados</div>
+      </div>
     </div>
   </div>
 </div>
@@ -870,8 +879,65 @@
             <div class="form-group" style="margin-bottom:0;">
               <label class="form-label">I_falla — Corriente de falla (kA)</label>
               <input class="form-input" type="number" id="m-I_falla" value="20" step="0.01" min="0.01">
+              <button type="button" id="m-ifalla-ref-btn" onclick="mallaToggleIfallRefTable()"
+                style="margin-top:6px;background:none;border:none;padding:0;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;color:var(--blue-mid);font-family:inherit;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span id="m-ifalla-ref-btn-label">Ver tabla de referencia</span>
+              </button>
             </div>
           </div>
+
+          <!-- Tabla de referencia colapsable I_falla -->
+          <div id="m-ifalla-ref-panel" style="display:none;margin-bottom:14px;">
+            <div style="border:1px solid var(--grey-line);border-radius:var(--radius-md);overflow:hidden;">
+              <div style="background:var(--grey-bg);padding:8px 14px;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-light);border-bottom:1px solid var(--grey-line);">
+                Capacidad nominal de corriente de cortocircuito — Subestaciones Colombia
+              </div>
+              <div style="overflow-x:auto;max-height:320px;overflow-y:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:0.74rem;">
+                  <thead style="position:sticky;top:0;z-index:1;">
+                    <tr style="background:var(--grey-bg);">
+                      <th style="padding:7px 12px;text-align:left;border-bottom:1px solid var(--grey-line);color:var(--text-mid);font-weight:600;">Subestación</th>
+                      <th style="padding:7px 12px;text-align:left;border-bottom:1px solid var(--grey-line);color:var(--text-mid);font-weight:600;">Área</th>
+                      <th style="padding:7px 12px;text-align:left;border-bottom:1px solid var(--grey-line);color:var(--text-mid);font-weight:600;">Subárea</th>
+                      <th style="padding:7px 12px;text-align:center;border-bottom:1px solid var(--grey-line);color:var(--text-mid);font-weight:600;">Cap. nominal [kA]</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="background:var(--grey-bg);"><td colspan="4" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — Atlántico</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Las Flores 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">El Rio 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Oasis 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Termoflores 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Silencio 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Centro 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Sabanalarga 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Termoflores 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Tebsa 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Tebsa 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Nva Magdalena 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">N. Barranquilla 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Unión 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Estadio 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
+                    <tr style="background:var(--grey-bg);"><td colspan="4" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — Bolívar</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">El Bosque 66 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Cartagena 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Ternera 66 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Cartagena 66 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Ternera 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
+                    <tr style="background:var(--grey-bg);"><td colspan="4" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — Cerromatoso</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Cerromatoso 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Cerromatoso</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">25.00</td></tr>
+                    <tr style="background:var(--grey-bg);"><td colspan="4" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — Córdoba-Sucre</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Chinú 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Córdoba-Sucre</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
+                    <tr style="background:var(--grey-bg);"><td colspan="4" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — GCM</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">El Copey 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">GCM</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">12.50</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
           <div class="form-row" style="margin-bottom:14px;">
             <div class="form-group" style="margin-bottom:0;">
               <label class="form-label">tc — Duración térmica (s)</label>
@@ -1375,38 +1441,27 @@
       <button class="modal-close-btn" onclick="closeModal('modal-manual')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
-      <div class="info-banner" style="margin-bottom:18px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Versión de documentación: v1.0.0 — Esta es una vista previa del manual. La versión completa será un PDF adjunto.
+      <div style="text-align:center;padding:28px 16px 20px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--blue-mid);margin-bottom:14px;"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+        <p style="font-size:0.88rem;color:var(--text-mid);margin-bottom:24px;line-height:1.6;">El manual de usuario de TerraShield está disponible en formato PDF. Puedes descargarlo o abrirlo directamente desde el botón a continuación.</p>
+        <a id="manual-pdf-link" href="ManualDeUsuario.pdf" download="ManualDeUsuario.pdf" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;padding:10px 22px;font-size:0.85rem;" onclick="handleManualDownload(event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Descargar / Abrir manual (PDF)
+        </a>
+        <div style="margin-top:14px;">
+          <a href="https://drive.google.com/file/d/1LpJsv5ONFQrYzN_lH04piRgFAAlavXe3/view?usp=sharing" target="_blank" rel="noopener" style="font-size:0.78rem;color:var(--blue-mid);text-decoration:underline;">
+            ¿No abre? Ver manual en Google Drive
+          </a>
+        </div>
       </div>
-      <h3 style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:12px;">Tabla de contenidos</h3>
-      <ul class="manual-toc">
-        <li><span class="toc-num">01</span> <a href="#">Descripción general del software</a></li>
-        <li><span class="toc-num">02</span> <a href="#">Requisitos del sistema y configuración inicial</a></li>
-        <li><span class="toc-num">03</span> <a href="#">Creación y gestión de proyectos</a></li>
-        <li><span class="toc-num">04</span> <a href="#">Restricción geográfica — Región Caribe de Colombia</a></li>
-        <li><span class="toc-num">05</span> <a href="#">Ingreso de datos técnicos de la subestación</a></li>
-        <li><span class="toc-num">06</span> <a href="#">Módulo de apantallamiento (IEEE Std 998 / IEC 62305)</a></li>
-        <li><span class="toc-num">07</span> <a href="#">Módulo de malla de puesta a tierra (IEEE Std 80)</a></li>
-        <li><span class="toc-num">09</span> <a href="#">Generación de reportes técnicos</a></li>
-        <li><span class="toc-num">10</span> <a href="#">Integración con backend Python</a></li>
-        <li><span class="toc-num">11</span> <a href="#">Formato de archivo de proyecto (.json)</a></li>
-        <li><span class="toc-num">12</span> <a href="#">Glosario técnico</a></li>
-      </ul>
-      <div style="margin-top:18px;padding:14px;background:var(--grey-bg);border-radius:var(--radius-md);font-size:0.78rem;color:var(--text-mid);line-height:1.6;">
+      <div style="margin-top:4px;padding:14px;background:var(--grey-bg);border-radius:var(--radius-md);font-size:0.78rem;color:var(--text-mid);line-height:1.6;">
         <strong style="color:var(--text-dark);">Normas de referencia:</strong><br>
         IEEE Std 998 — Guide for Direct Lightning Stroke Shielding of Substations<br>
-        IEEE Std 80 — Guide for Safety in AC Substation Grounding<br>
-        IEC 62305 — Protection against lightning<br>
-        ICONTEC NTC 2050 — Código Eléctrico Colombiano
+        IEEE Std 80 — Guide for Safety in AC Substation Grounding
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-manual')">Cerrar</button>
-      <button class="btn btn-primary" onclick="showToast('Descargando manual completo...', 'info')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Descargar PDF
-      </button>
     </div>
   </div>
 </div>
@@ -1423,6 +1478,36 @@
 <script src="apantallamiento.js"></script>
 
 <script>
+/* Manual PDF — intenta descarga local; si falla (file not found), abre Drive */
+function handleManualDownload(e) {
+  if (location.protocol === 'file:') {
+    /* En file:// el atributo download funciona pero no podemos detectar 404,
+       así que simplemente abrimos en pestaña nueva para máxima compatibilidad */
+    e.preventDefault();
+    const w = window.open('ManualDeUsuario.pdf', '_blank');
+    if (!w || w.closed || typeof w.closed === 'undefined') {
+      window.location.href = 'https://drive.google.com/file/d/1LpJsv5ONFQrYzN_lH04piRgFAAlavXe3/view?usp=sharing';
+    }
+  } else {
+    /* Desde servidor: intentamos fetch para verificar existencia */
+    e.preventDefault();
+    fetch('ManualDeUsuario.pdf', { method: 'HEAD' })
+      .then(r => {
+        if (r.ok) {
+          const a = document.createElement('a');
+          a.href = 'ManualDeUsuario.pdf';
+          a.download = 'ManualDeUsuario.pdf';
+          a.click();
+        } else {
+          window.open('https://drive.google.com/file/d/1LpJsv5ONFQrYzN_lH04piRgFAAlavXe3/view?usp=sharing', '_blank');
+        }
+      })
+      .catch(() => {
+        window.open('https://drive.google.com/file/d/1LpJsv5ONFQrYzN_lH04piRgFAAlavXe3/view?usp=sharing', '_blank');
+      });
+  }
+}
+
 /* =============================================
    MALLA DE PUESTA A TIERRA — IEEE 80-2013
    ============================================= */
@@ -1976,6 +2061,15 @@ function mallaRefreshRefTable() {
   }
 
   tbody.innerHTML = filas.join('');
+}
+
+function mallaToggleIfallRefTable() {
+  const panel = document.getElementById('m-ifalla-ref-panel');
+  const label = document.getElementById('m-ifalla-ref-btn-label');
+  if (!panel) return;
+  const abierto = panel.style.display !== 'none';
+  panel.style.display = abierto ? 'none' : '';
+  label.textContent = abierto ? 'Ver tabla de referencia' : 'Ocultar tabla de referencia';
 }
 
 function mallaToggleRefTable() {
