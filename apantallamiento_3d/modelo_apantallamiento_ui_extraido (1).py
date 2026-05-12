@@ -14409,7 +14409,6 @@ def is_ground_or_reference_surface(name, Z, tol=1e-9):
         "referencia",
         "reference",
         "z=0",
-        "base"
     ]
 
     if any(word in name_low for word in excluded_words):
