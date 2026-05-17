@@ -455,22 +455,12 @@
           <!-- TAB: Cables de guarda -->
           <div id="apant-tab-guardas" class="apant-tab-pane" style="display:none;">
             <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--radius-md);padding:13px 15px;margin-bottom:14px;">
-              <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2.2" style="width:14px;height:14px;flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                <span style="font-size:0.77rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.05em;">Importante — Configuración de cables de guarda</span>
-              </div>
               <div style="font-size:0.78rem;color:var(--text-mid);line-height:1.75;">
-                <div style="font-weight:600;margin-bottom:4px;">Seleccione una geometría válida:</div>
-                <ul style="margin:0 0 10px 20px;padding:0;">
-                  <li>1 guarda independiente</li>
-                  <li>2 guardas paralelas</li>
-                  <li>3 guardas conectadas</li>
-                  <li>4 guardas en rectángulo/cuadrado</li>
-                </ul>
                 <div style="font-weight:600;margin-bottom:4px;">Condiciones:</div>
                 <ul style="margin:0 0 0 20px;padding:0;">
                   <li>✓ Las guardas deben ser paralelas o perpendiculares.</li>
                   <li>✓ La separación entre guardas no debe superar el diámetro de la esfera rodante.</li>
+                  <li>✓ La longitud de las guardas no debe superar el diámetro de la esfera rodante.</li>
                 </ul>
               </div>
             </div>
@@ -499,7 +489,7 @@
         </div>
 
         <!-- Botón calcular -->
-        <div style="display:flex;gap:12px;align-items:center;margin-bottom:28px;">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
           <button class="btn btn-primary" id="apant-btn-calc" onclick="apantCalcular()" style="height:42px;font-size:0.88rem;padding:0 28px;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             Calcular apantallamiento
@@ -509,6 +499,19 @@
             Calculando modelo 3D…
           </div>
           <div id="apant-error" style="display:none;font-size:0.78rem;color:var(--error);"></div>
+        </div>
+
+        <!-- Botón verificar (visible solo tras calcular) -->
+        <div id="apant-verif-row" style="display:none;margin-bottom:28px;">
+          <button class="btn btn-secondary" id="apant-btn-verif-main" onclick="apantVerificar()" style="height:42px;font-size:0.88rem;padding:0 28px;display:flex;align-items:center;gap:8px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+            Verificar apantallamiento
+          </button>
+          <div id="apant-verif-spinner" style="display:none;font-size:0.78rem;color:var(--text-light);gap:8px;align-items:center;margin-left:12px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;animation:spin 1s linear infinite;"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>
+            Verificando equipos…
+          </div>
+          <div id="apant-verif-error" style="display:none;font-size:0.78rem;color:var(--error);margin-left:12px;"></div>
         </div>
 
         <!-- Resultados -->
@@ -535,7 +538,6 @@
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:13px;height:13px;flex-shrink:0;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                   Vista limpia
                 </button>
-                <div style="width:1px;height:18px;background:var(--grey-line);margin:0 4px;"></div>
                 <button class="btn btn-secondary" onclick="apantDescargarImagen()" style="height:28px;font-size:0.72rem;padding:0 12px;display:flex;align-items:center;gap:5px;">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:13px;height:13px;flex-shrink:0;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   PNG
@@ -545,53 +547,37 @@
             <div id="apant-chart" style="width:100%;height:720px;"></div>
           </div>
 
-          <!-- Tabla de verificación de equipos -->
-          <div class="result-table-wrap" id="apant-verif-wrap" style="display:none;margin-bottom:20px;">
-            <div style="padding:14px 16px 12px;border-bottom:1px solid var(--grey-line);display:flex;align-items:center;gap:8px;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:var(--blue-mid);flex-shrink:0;"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-              <div>
-                <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-mid);">Verificación de equipos apantallados</div>
-                <div style="font-size:0.71rem;color:var(--text-light);margin-top:3px;">Comprobación punto a punto mediante el método de la esfera rodante (EGM). Cada equipo se muestrea en su superficie superior y lateral.</div>
+          <!-- Panel de verificación de apantallamiento -->
+          <div class="result-table-wrap" id="apant-verif-panel" style="display:none;margin-bottom:20px;">
+            <div style="padding:14px 16px 12px;border-bottom:1px solid var(--grey-line);display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:var(--blue-mid);flex-shrink:0;"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                <div>
+                  <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-mid);">Verificación de apantallamiento</div>
+                  <div style="font-size:0.71rem;color:var(--text-light);margin-top:3px;">Comprobación punto a punto de cada equipo contra la capa de apantallamiento resultante (unión de superficies de tetras y mástil solo).</div>
+                </div>
               </div>
+              <button class="btn btn-secondary" id="apant-btn-recomendaciones" onclick="apantGenerarRecomendaciones()" style="height:32px;font-size:0.75rem;white-space:nowrap;display:none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/><path d="M12 12v4m-2-2h4"/></svg>
+                Generar recomendaciones
+              </button>
             </div>
-            <div style="padding:10px 16px 6px;border-bottom:1px solid var(--grey-line);display:flex;gap:20px;font-size:0.72rem;color:var(--text-light);">
-              <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;"></span>Protegido — ningún punto sobrepasa la envolvente de protección</span>
-              <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#dc2626;"></span>Sin protección — al menos un punto queda expuesto</span>
-            </div>
-            <table class="result-table">
-              <thead>
-                <tr>
-                  <th>Equipo</th>
-                  <th>Puntos protegidos / evaluados</th>
-                  <th>Cobertura</th>
-                  <th>Exceso máx.</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody id="apant-verif-tbody"></tbody>
-            </table>
-            <div style="padding:10px 16px;font-size:0.71rem;color:var(--text-light);border-top:1px solid var(--grey-line);">
-              El exceso máximo indica cuánto se eleva el punto más crítico por encima de la envolvente de protección. Un valor "—" en equipos protegidos indica que todos los puntos quedan dentro de la zona segura. Basado en IEEE Std 998 — Rolling Sphere Method.
+            <div id="apant-verif-body" style="padding:0;">
+              <!-- contenido generado por JS -->
             </div>
           </div>
 
-          <!-- Recomendaciones correctivas -->
-          <div id="apant-recs-outer" style="display:none;margin-bottom:20px;">
-            <div class="result-table-wrap">
-              <div style="padding:14px 16px 12px;border-bottom:1px solid var(--grey-line);display:flex;align-items:center;gap:10px;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:var(--blue-mid);flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <div style="flex:1;">
-                  <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-mid);">Recomendaciones correctivas</div>
-                  <div style="font-size:0.71rem;color:var(--text-light);margin-top:2px;">Propuestas geométricas basadas en los puntos críticos no apantallados. Cada propuesta se verifica internamente con el modelo EGM.</div>
-                </div>
-                <button class="btn btn-primary" id="apant-btn-recs" onclick="apantGetRecommendations()" style="height:34px;font-size:0.78rem;padding:0 16px;flex-shrink:0;display:flex;align-items:center;gap:6px;">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:13px;height:13px;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                  Analizar recomendaciones
-                </button>
+          <!-- Panel de recomendaciones -->
+          <div class="result-table-wrap" id="apant-recs-panel" style="display:none;margin-bottom:20px;">
+            <div style="padding:14px 16px 12px;border-bottom:1px solid var(--grey-line);display:flex;align-items:center;gap:8px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:#f59e0b;flex-shrink:0;"><path d="M12 2L2 7v10c0 8 10 13 10 13s10-5 10-13V7l-10-5z"/><path d="M9 12l2 2 4-4"/></svg>
+              <div>
+                <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-mid);">Recomendaciones correctivas</div>
+                <div style="font-size:0.71rem;color:var(--text-light);margin-top:3px;">Opciones para apantallar completamente los equipos sin protección.</div>
               </div>
-              <div id="apant-recs-body" style="padding:16px 18px;">
-                <div style="font-size:0.78rem;color:var(--text-light);">Haga clic en "Analizar recomendaciones" para generar propuestas de mejora basadas en los puntos críticos.</div>
-              </div>
+            </div>
+            <div id="apant-recs-body" style="padding:16px 18px;">
+              <!-- contenido generado por JS -->
             </div>
           </div>
 
@@ -901,37 +887,38 @@
                       <th style="padding:7px 12px;text-align:left;border-bottom:1px solid var(--grey-line);color:var(--text-mid);font-weight:600;">Área</th>
                       <th style="padding:7px 12px;text-align:left;border-bottom:1px solid var(--grey-line);color:var(--text-mid);font-weight:600;">Subárea</th>
                       <th style="padding:7px 12px;text-align:center;border-bottom:1px solid var(--grey-line);color:var(--text-mid);font-weight:600;">Cap. nominal [kA]</th>
+                      <th style="padding:7px 12px;text-align:center;border-bottom:1px solid var(--grey-line);color:var(--text-mid);font-weight:600;">Cortocircuito 1F [kA]</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr style="background:var(--grey-bg);"><td colspan="4" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — Atlántico</td></tr>
-                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Las Flores 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
-                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">El Rio 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
-                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Oasis 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
-                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Termoflores 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
-                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Silencio 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
-                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Centro 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
-                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Sabanalarga 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
-                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Termoflores 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
-                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Tebsa 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
-                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Tebsa 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
-                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Nva Magdalena 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
-                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">N. Barranquilla 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
-                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Unión 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
-                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Estadio 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
-                    <tr style="background:var(--grey-bg);"><td colspan="4" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — Bolívar</td></tr>
-                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">El Bosque 66 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
-                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Cartagena 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
-                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Ternera 66 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
-                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td></tr>
-                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Cartagena 66 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
-                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Ternera 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
-                    <tr style="background:var(--grey-bg);"><td colspan="4" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — Cerromatoso</td></tr>
-                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Cerromatoso 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Cerromatoso</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">25.00</td></tr>
-                    <tr style="background:var(--grey-bg);"><td colspan="4" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — Córdoba-Sucre</td></tr>
-                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Chinú 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Córdoba-Sucre</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td></tr>
-                    <tr style="background:var(--grey-bg);"><td colspan="4" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — GCM</td></tr>
-                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">El Copey 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">GCM</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">12.50</td></tr>
+                    <tr style="background:var(--grey-bg);"><td colspan="5" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — Atlántico</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Las Flores 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">43.48</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">El Rio 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">42.82</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Oasis 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">42.55</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Termoflores 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">39.26</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Silencio 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">38.33</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Centro 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">37.50</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Sabanalarga 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">45.77</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Termoflores 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">44.88</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Tebsa 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">44.43</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Tebsa 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">43.45</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Nva Magdalena 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">42.95</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">N. Barranquilla 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.02</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Unión 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">39.54</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Estadio 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Atlántico</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">37.76</td></tr>
+                    <tr style="background:var(--grey-bg);"><td colspan="5" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — Bolívar</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">El Bosque 66 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">12.07</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Cartagena 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">33.40</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Ternera 66 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">26.61</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">40.00</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">39.97</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Cartagena 66 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">19.83</td></tr>
+                    <tr style="background:var(--grey-bg);"><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Ternera 220 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Bolívar</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">30.15</td></tr>
+                    <tr style="background:var(--grey-bg);"><td colspan="5" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — Cerromatoso</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Cerromatoso 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Cerromatoso</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">25.00</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">30.20</td></tr>
+                    <tr style="background:var(--grey-bg);"><td colspan="5" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — Córdoba-Sucre</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Chinú 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Córdoba-Sucre</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">31.50</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">30.52</td></tr>
+                    <tr style="background:var(--grey-bg);"><td colspan="5" style="padding:5px 12px;font-size:0.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Caribe — GCM</td></tr>
+                    <tr><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">El Copey 110 kV</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">Caribe</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);">GCM</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">12.50</td><td style="padding:6px 12px;border-bottom:1px solid var(--grey-line);text-align:center;">11.47</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -2977,24 +2964,24 @@ async function exportarPDF() {
       const apA   = document.getElementById('apant-area')?.value || '—';
 
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
-      doc.text('Parámetros del modelo EGM', 14, ya);
+      doc.text('Parametros del modelo EGM', 14, ya);
       ya += 4;
       doc.autoTable({
         startY: ya,
-        head: [['Parámetro', 'Valor', 'Unidad']],
+        head: [['Parametro', 'Valor', 'Unidad']],
         body: [
-          ['BIL — Nivel básico de impulso', apBIL, 'kV'],
-          ['Zs — Impedancia de descarga',   apZs,  'Ω'],
+          ['BIL — Nivel basico de impulso', apBIL, 'kV'],
+          ['Zs — Impedancia de descarga',   apZs,  'Ohm'],
           ['k — Factor de forma',           apK,   '—'],
           ['S — Radio de esfera rodante',   apS,   'm'],
-          ['Ng — Densidad de descargas',    apNg,  'flashes/km²·año'],
-          ['Td — Días de tormenta al año',  apTd,  'días'],
-          ['A — Área de la subestación',    apA,   'm²'],
+          ['Ng — Densidad de descargas',    apNg,  'flashes/km2·año'],
+          ['Td — Dias de tormenta al año',  apTd,  'dias'],
+          ['A — Area de la subestacion',    apA,   'm2'],
         ],
         styles:     { fontSize: 9, cellPadding: 3 },
         headStyles: { fillColor: [10, 61, 145], textColor: 255, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [238, 243, 255] },
-        columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 60 }, 2: { cellWidth: 60 } },
+        columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 52 }, 2: { cellWidth: 40 } },
         margin: { left: 14, right: 14 },
       });
       ya = doc.lastAutoTable.finalY + 10;
@@ -3021,19 +3008,19 @@ async function exportarPDF() {
           startY: ya,
           head: [['Variable', 'Formula', 'Valor', 'Unidad']],
           body: [
-            ['Ns - Impactos directos esperados',   'Ng x A / 1e6',           f4(NsN),                        'impactos/año'],
-            ['Ts - Años entre impactos',            '1 / Ns',                 NsN > 0 ? f4(1/NsN) : 'Inf',    'años/impacto'],
-            ['Is - Corriente critica',              '2.2 x BIL / Zs',        f4(IsN),                        'kA'],
-            ['S - Radio de esfera',                 '8 x k x Is^0.65',       f4(sN),                         'm'],
-            ['P - Prob. superar Is',                '1/(1+(Is/24)^2.6)',      f4(PsN * 100) + ' %',           ''],
-            ['P_pen - Prob. de penetracion',        '1 - P',                  f4(PpN * 100) + ' %',           ''],
-            ['lambda - Tasa anual de penetracion',  'Ns x P_pen',             lamN > 0 ? f4(lamN) : '0',      'pen./año'],
-            ['T_pen - Años entre penetraciones',    '1 / lambda',             lamN > 0 ? f4(1/lamN) : 'Inf',  'años/pen.'],
+            ['Is - Corriente critica de rayo',     '2.2 x BIL / Zs',    f4(IsN),                       'kA'],
+            ['S  - Radio de esfera rodante',        '8 x k x Is^0.65',   f4(sN),                        'm'],
+            ['P  - Prob. de superar Is',            '1/(1+(Is/24)^2.6)', f4(PsN * 100) + ' %',          ''],
+            ['P_pen - Prob. de penetracion',        '1 - P',             f4(PpN * 100) + ' %',          ''],
+            ['Ns - Impactos directos/año',          'Ng x A / 1e6',      f4(NsN),                       'impactos/año'],
+            ['Ts - Años entre impactos',            '1 / Ns',            NsN > 0 ? f4(1/NsN) : 'Inf',  'años/impacto'],
+            ['lambda - Tasa anual penetracion',     'Ns x P_pen',        lamN > 0 ? f4(lamN) : '0',     'pen./año'],
+            ['T_pen - Años entre penetraciones',    '1 / lambda',        lamN > 0 ? f4(1/lamN) : 'Inf', 'años/pen.'],
           ],
           styles:     { fontSize: 8, cellPadding: 3 },
           headStyles: { fillColor: [10, 61, 145], textColor: 255, fontStyle: 'bold' },
           alternateRowStyles: { fillColor: [238, 243, 255] },
-          columnStyles: { 0: { cellWidth: 86 }, 1: { cellWidth: 58 }, 2: { cellWidth: 30 }, 3: { cellWidth: 44 } },
+          columnStyles: { 0: { cellWidth: 80 }, 1: { cellWidth: 52 }, 2: { cellWidth: 26 }, 3: { cellWidth: 24 } },
           margin: { left: 14, right: 14 },
         });
         ya = doc.lastAutoTable.finalY + 10;

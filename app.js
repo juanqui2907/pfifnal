@@ -303,6 +303,33 @@ function handleProjectFile(event) {
         mallaPrecargarRho(d);
       }
 
+      // Restaurar estado de apantallamiento
+      if (proj.apantallamiento) {
+        const ap = proj.apantallamiento;
+        const _rBil  = document.getElementById('apant-bil');
+        const _rZs   = document.getElementById('apant-zs');
+        const _rK    = document.getElementById('apant-k');
+        const _rTd   = document.getElementById('apant-td');
+        const _rArea = document.getElementById('apant-area');
+        if (_rBil  && ap.BIL  != null) _rBil.value  = ap.BIL;
+        if (_rZs   && ap.Zs   != null) _rZs.value   = ap.Zs;
+        if (_rK    && ap.k    != null) _rK.value     = ap.k;
+        if (_rTd   && ap.Td   != null) {
+          _rTd.value = ap.Td;
+          if (typeof calcNgFromTd === 'function') calcNgFromTd();
+        }
+        if (_rArea && ap.area != null) _rArea.value = ap.area;
+        if (typeof ApantState !== 'undefined') {
+          ApantState.masts      = ap.masts      || [];
+          ApantState.cubes      = ap.cubes      || [];
+          ApantState.guardWires = ap.guardWires || [];
+          if (typeof apantRenderMasts       === 'function') apantRenderMasts();
+          if (typeof apantRenderCubes       === 'function') apantRenderCubes();
+          if (typeof apantRenderGuardWires  === 'function') apantRenderGuardWires();
+          if (typeof apantUpdateGuardSelects === 'function') apantUpdateGuardSelects();
+        }
+      }
+
       // Crear archivo de historial si no existe y cargar historial previo
       fetch('/proyectos/nuevo', {
         method: 'POST',
@@ -349,6 +376,29 @@ function saveProject() {
   if (AppState.mallaHistoria?.length > 0) {
     AppState.currentProject.malla = { historial: AppState.mallaHistoria };
   }
+
+  // Guardar estado completo de apantallamiento
+  const apantSnap = {};
+  const _aBil  = document.getElementById('apant-bil');
+  const _aZs   = document.getElementById('apant-zs');
+  const _aK    = document.getElementById('apant-k');
+  const _aTd   = document.getElementById('apant-td');
+  const _aArea = document.getElementById('apant-area');
+  if (_aBil  && _aBil.value)  apantSnap.BIL  = parseFloat(_aBil.value);
+  if (_aZs   && _aZs.value)   apantSnap.Zs   = parseFloat(_aZs.value);
+  if (_aK    && _aK.value)    apantSnap.k    = _aK.value;
+  if (_aTd   && _aTd.value)   apantSnap.Td   = parseFloat(_aTd.value);
+  if (_aArea && _aArea.value) apantSnap.area  = parseFloat(_aArea.value);
+  if (typeof ApantState !== 'undefined') {
+    apantSnap.masts      = JSON.parse(JSON.stringify(ApantState.masts));
+    apantSnap.cubes      = JSON.parse(JSON.stringify(ApantState.cubes));
+    apantSnap.guardWires = JSON.parse(JSON.stringify(ApantState.guardWires));
+  }
+  if (typeof _apantLastResult !== 'undefined' && _apantLastResult) {
+    const { fig_json, ...resultSinFig } = _apantLastResult;
+    apantSnap.lastResult = resultSinFig;
+  }
+  AppState.currentProject.apantallamiento = apantSnap;
 
   const blob = new Blob([JSON.stringify(AppState.currentProject, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);

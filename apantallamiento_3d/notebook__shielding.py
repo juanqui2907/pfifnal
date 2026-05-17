@@ -36794,7 +36794,8 @@ FASE6_SIDE_NZ = 21
 FASE6_VERTICAL_TOL = 1e-6
 
 # Si el porcentaje es mayor o igual a este valor, se marca como protegido.
-FASE6_OK_PERCENT_THRESHOLD = 99.5
+# 100.0 = cualquier punto de la superficie fuera del escudo => no apantallado.
+FASE6_OK_PERCENT_THRESHOLD = 100.0
 
 # Mostrar todos los puntos de muestreo.
 # Si está en False, solo se muestran los puntos NO apantallados.
@@ -36811,21 +36812,21 @@ FASE6_SHOW_UNPROTECTED_POINTS = False
 FASE6_EQUIPMENT_MESH_COLOR = "lightgray"
 FASE6_EQUIPMENT_MESH_OPACITY = 0.10
 
-FASE6_OK_EDGE_COLOR = "limegreen"
-FASE6_FAILED_EDGE_COLOR = "red"
+FASE6_OK_EDGE_COLOR = "#888888"
+FASE6_FAILED_EDGE_COLOR = "#888888"
 
-FASE6_OK_EDGE_WIDTH = 5
-FASE6_FAILED_EDGE_WIDTH_MIN = 4
-FASE6_FAILED_EDGE_WIDTH_MAX = 11
+FASE6_OK_EDGE_WIDTH = 3
+FASE6_FAILED_EDGE_WIDTH_MIN = 3
+FASE6_FAILED_EDGE_WIDTH_MAX = 3
 
 # Activar animación tipo pulso para bordes rojos.
 # En Plotly/Colab aparece un botón: "▶ Pulso bordes rojos".
-FASE6_ENABLE_FAILED_EDGE_PULSE = True
+FASE6_ENABLE_FAILED_EDGE_PULSE = False
 
 # Mostrar un halo rojo suave alrededor de los bordes fallidos.
-FASE6_SHOW_FAILED_EDGE_HALO = True
-FASE6_FAILED_HALO_WIDTH = 14
-FASE6_FAILED_HALO_COLOR = "rgba(255,0,0,0.22)"
+FASE6_SHOW_FAILED_EDGE_HALO = False
+FASE6_FAILED_HALO_WIDTH = 0
+FASE6_FAILED_HALO_COLOR = "rgba(0,0,0,0)"
 
 # Construcción del índice espacial para acelerar la consulta.
 FASE6_SPATIAL_BINS = 90
@@ -37379,13 +37380,9 @@ def add_cube_to_fig_fase6(fig, cube, percent_area, is_ok):
     """
     Dibuja el equipo sobre la figura final de FASE 6X.
 
-    Versión visual corregida:
-      - El cuerpo del equipo siempre se dibuja gris/transparente.
-      - Si el equipo cumple, sus bordes son verdes.
-      - Si el equipo NO cumple, sus bordes son rojos.
-      - Si el equipo NO cumple, las aristas rojas se guardan para aplicarles
-        una animación tipo pulso.
-      - Ya no se rellena todo el equipo de rojo.
+    Visual neutral:
+      - El cuerpo del equipo se dibuja gris/transparente.
+      - Las aristas se muestran en color neutro sin diferenciación por estado.
     """
     x0, x1 = cube["x0"], cube["x1"]
     y0, y1 = cube["y0"], cube["y1"]
@@ -37407,8 +37404,8 @@ def add_cube_to_fig_fase6(fig, cube, percent_area, is_ok):
     J = [1, 2, 5, 6, 1, 5, 2, 6, 3, 7, 0, 4]
     K = [2, 3, 6, 7, 5, 4, 6, 5, 7, 6, 4, 7]
 
-    edge_color = FASE6_OK_EDGE_COLOR if is_ok else FASE6_FAILED_EDGE_COLOR
-    edge_width = FASE6_OK_EDGE_WIDTH if is_ok else FASE6_FAILED_EDGE_WIDTH_MIN
+    edge_color = FASE6_OK_EDGE_COLOR
+    edge_width = FASE6_OK_EDGE_WIDTH
 
     # Cuerpo del equipo:
     # Siempre gris/transparente para que no tape la visualización de 6X.
@@ -37421,10 +37418,9 @@ def add_cube_to_fig_fase6(fig, cube, percent_area, is_ok):
         k=K,
         color=FASE6_EQUIPMENT_MESH_COLOR,
         opacity=FASE6_EQUIPMENT_MESH_OPACITY,
-        name=f"{cube['name']} | {percent_area:.2f}% apantallado",
+        name=cube['name'],
         hovertemplate=(
             cube["name"]
-            + f"<br>Apantallado: {percent_area:.2f}%"
             + "<extra></extra>"
         )
     ))
@@ -37443,28 +37439,6 @@ def add_cube_to_fig_fase6(fig, cube, percent_area, is_ok):
         ye += [V[a, 1], V[b, 1], None]
         ze += [V[a, 2], V[b, 2], None]
 
-    # Halo rojo suave para equipos que NO cumplen.
-    # Esto ayuda a identificar el equipo fallido sin rellenarlo de rojo.
-    if (not is_ok) and FASE6_SHOW_FAILED_EDGE_HALO:
-        fig.add_trace(go.Scatter3d(
-            x=xe,
-            y=ye,
-            z=ze,
-            mode="lines",
-            line=dict(
-                color=FASE6_FAILED_HALO_COLOR,
-                width=FASE6_FAILED_HALO_WIDTH
-            ),
-            name=f"Halo alerta {cube['name']}",
-            hoverinfo="skip",
-            showlegend=False
-        ))
-
-        halo_trace_idx = len(fig.data) - 1
-
-        if "fase6_failed_edge_trace_indices" in globals():
-            fase6_failed_edge_trace_indices.append(halo_trace_idx)
-
     # Aristas principales del equipo.
     fig.add_trace(go.Scatter3d(
         x=xe,
@@ -37473,26 +37447,6 @@ def add_cube_to_fig_fase6(fig, cube, percent_area, is_ok):
         mode="lines",
         line=dict(color=edge_color, width=edge_width),
         name=f"Aristas {cube['name']}",
-        hoverinfo="skip"
-    ))
-
-    edge_trace_idx = len(fig.data) - 1
-
-    # Guardar las aristas rojas para aplicarles pulso al final.
-    if not is_ok:
-        if "fase6_failed_edge_trace_indices" in globals():
-            fase6_failed_edge_trace_indices.append(edge_trace_idx)
-
-    # Etiqueta con porcentaje.
-    fig.add_trace(go.Scatter3d(
-        x=[0.5 * (x0 + x1)],
-        y=[0.5 * (y0 + y1)],
-        z=[z1 + 0.05 * max(cube["dx"], cube["dy"], cube["dz"])],
-        mode="markers+text",
-        marker=dict(size=4, color=edge_color),
-        text=[f"{cube['name']}<br>{percent_area:.2f}%"],
-        textposition="top center",
-        name=f"Resultado {cube['name']}",
         hoverinfo="skip"
     ))
 

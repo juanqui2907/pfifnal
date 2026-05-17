@@ -33,8 +33,6 @@ app = Flask(__name__, static_folder=BASE_DIR, static_url_path='')
 os.makedirs(HISTORIALES_DIR, exist_ok=True)
 
 # ─── Base de datos SQLite de suelos ───────────────────────────────────────────
-# suelos.db se genera localmente con convertir_suelos.py y se sube al repo.
-# El cliente llama GET /suelo?lat=X&lon=Y — recibe solo el polígono que necesita.
 _DB_PATH      = os.path.join(BASE_DIR, 'suelos.db')
 _db_disponible = os.path.exists(_DB_PATH)
 
@@ -512,10 +510,25 @@ def post_recomendar_apantallamiento():
             return jsonify({'error': 'Se requiere al menos un mástil en params'}), 400
         if S <= 0:
             return jsonify({'error': 'Se requiere S > 0'}), 400
-        recs = calculos_apant.calcular_recomendaciones(params, S, verification)
-        return jsonify({'ok': True, 'recommendations': recs})
+        recs, diags = calculos_apant.calcular_recomendaciones(params, S, verification)
+        return jsonify({'ok': True, 'recommendations': recs, 'diagnostics': diags})
     except Exception as e:
         print('[ERROR /apantallamiento/recomendar]', _tb.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/apantallamiento/verificar', methods=['POST'])
+def post_verificar_apantallamiento():
+    import traceback as _tb
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({'error': 'Body JSON requerido'}), 400
+    cubes = data.get('cubes', [])
+    try:
+        import calculos_apant
+        verification = calculos_apant.verificar_equipos_rapido(cubes)
+        return jsonify({'ok': True, 'verification': verification})
+    except Exception as e:
+        print('[ERROR /apantallamiento/verificar]', _tb.format_exc())
         return jsonify({'error': str(e)}), 500
 
 # ─── Arranque ─────────────────────────────────────────────────────────────────

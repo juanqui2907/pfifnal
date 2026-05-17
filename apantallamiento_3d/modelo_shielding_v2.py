@@ -264,6 +264,10 @@ def _format_verification(records: list) -> list:
     return out
 
 
+# Caché de la superficie calculada — persiste entre reloads de calculos_apant
+_shield_cache = None  # dict con 'triangles', 'spatial_index', 'functions'
+
+
 # ─── Punto de entrada principal ───────────────────────────────────────────────
 
 def run_shielding_model_ui(
@@ -366,6 +370,19 @@ def run_shielding_model_ui(
             else:
                 sys.modules[k] = orig
 
+    # ── Cachear superficie para verificación rápida posterior ─────────────────
+    global _shield_cache
+    try:
+        _shield_cache = {
+            'triangles':     ns.get('fase6_shield_triangles', []),
+            'spatial_index': ns.get('fase6_spatial_index'),
+            'fn_normalize':  ns.get('normalize_cube_record_fase6'),
+            'fn_verify':     ns.get('verify_cube_shielding_fase6'),
+            'ok_threshold':  ns.get('FASE6_OK_PERCENT_THRESHOLD', 99.5),
+        }
+    except Exception:
+        _shield_cache = None
+
     # ── Extraer resultados ─────────────────────────────────────────────────────
     fig = (
         ns.get('fig_superficies_mmq_mmm_con_equipos')
@@ -406,3 +423,280 @@ def run_shielding_model_ui(
         'S':            S_used,
         'verification': _format_verification(records),
     }
+
+
+def _clamp_bary_z(px, py, tri):
+    """
+    Devuelve (z_clamped, dist2_xy) donde:
+      - z_clamped es la altura del triángulo en el punto más cercano de su
+        superficie 2-D al punto (px, py).  Se obtiene proyectando (px,py) al
+        triángulo via baricéntricas recortadas a [0,1] y renormalizadas.
+      - dist2_xy  es la distancia cuadrada en XY desde (px,py) hasta ese
+        punto más cercano en el triángulo.
+    """
+    A, B, C = tri['A'], tri['B'], tri['C']
+    v0 = (B[0]-A[0], B[1]-A[1])
+    v1 = (C[0]-A[0], C[1]-A[1])
+    v2 = (px-A[0],   py-A[1])
+    den = v0[0]*v1[1] - v1[0]*v0[1]
+    if abs(den) <= 1e-14:
+        # Triángulo degenerado: retroceder al vértice más cercano
+        best_d2 = float('inf')
+        best_z  = A[2]
+        for vx, vy, vz in (A, B, C):
+            d2 = (px-vx)**2 + (py-vy)**2
+            if d2 < best_d2:
+                best_d2, best_z = d2, vz
+        return best_z, best_d2
+
+    u = (v2[0]*v1[1] - v1[0]*v2[1]) / den
+    v = (v0[0]*v2[1] - v2[0]*v0[1]) / den
+    w = 1.0 - u - v
+    # Recortar y renormalizar → punto más cercano dentro del triángulo
+    u = max(0.0, u)
+    v = max(0.0, v)
+    w = max(0.0, w)
+    s = u + v + w
+    if s < 1e-14:
+        return A[2], (px-A[0])**2 + (py-A[1])**2
+    u /= s; v /= s; w /= s
+    qx = u*B[0] + v*C[0] + w*A[0]
+    qy = u*B[1] + v*C[1] + w*A[1]
+    qz = u*B[2] + v*C[2] + w*A[2]
+    dist2 = (px-qx)**2 + (py-qy)**2
+    return qz, dist2
+
+
+def _query_shield_robust(px, py, triangles, spatial_index, search_radius=6):
+    """
+    Consulta la altura de la superficie de apantallamiento en (px, py).
+
+    Estrategia en dos fases:
+    1. Búsqueda exacta (baricéntrica): expande hasta search_radius celdas del
+       índice espacial 2-D.  Si algún triángulo contiene (px,py) se devuelve
+       la z interpolada máxima.
+    2. Aproximación por triángulo más cercano: si no hay triángulo que
+       contenga el punto exactamente (brecha entre parches), se busca el
+       triángulo cuyo borde 2-D más cercano está más próximo a (px,py) y se
+       devuelve la altura de ese punto más cercano.  Esto cubre correctamente
+       las costuras entre superficies sin declararlos "no apantallados".
+    """
+    # ── Caso sin índice: recorrer todos los triángulos ────────────────────────
+    if spatial_index is None:
+        z_exact   = None
+        best_d2   = float('inf')
+        best_fall = None
+        for tri in triangles:
+            A, B, C = tri['A'], tri['B'], tri['C']
+            v0 = (B[0]-A[0], B[1]-A[1])
+            v1 = (C[0]-A[0], C[1]-A[1])
+            v2 = (px-A[0],   py-A[1])
+            den = v0[0]*v1[1] - v1[0]*v0[1]
+            if abs(den) > 1e-14:
+                u = (v2[0]*v1[1] - v1[0]*v2[1]) / den
+                v = (v0[0]*v2[1] - v2[0]*v0[1]) / den
+                ww = 1.0 - u - v
+                if u >= -1e-9 and v >= -1e-9 and ww >= -1e-9:
+                    z = ww*A[2] + u*B[2] + v*C[2]
+                    if z_exact is None or z > z_exact:
+                        z_exact = z
+            qz, d2 = _clamp_bary_z(px, py, tri)
+            if d2 < best_d2:
+                best_d2, best_fall = d2, qz
+        return z_exact if z_exact is not None else best_fall
+
+    xmin   = spatial_index['xmin']
+    xmax   = spatial_index['xmax']
+    ymin   = spatial_index['ymin']
+    ymax   = spatial_index['ymax']
+    n_bins = spatial_index['n_bins']
+    grid   = spatial_index['grid']
+
+    def to_ix(x):
+        return int(max(0, min(n_bins-1, (x - xmin) / (xmax - xmin) * n_bins)))
+    def to_iy(y):
+        return int(max(0, min(n_bins-1, (y - ymin) / (ymax - ymin) * n_bins)))
+
+    # Anclar al índice aunque el punto esté ligeramente fuera de los límites
+    cx = to_ix(max(xmin, min(xmax, px)))
+    cy = to_iy(max(ymin, min(ymax, py)))
+
+    def _eval_exact(candidate_ids):
+        """Devuelve z exacta (baricéntrica) o None si el punto no está en ningún triángulo."""
+        z_best = None
+        for idx in candidate_ids:
+            tri = triangles[idx]
+            A, B, C = tri['A'], tri['B'], tri['C']
+            v0 = (B[0]-A[0], B[1]-A[1])
+            v1 = (C[0]-A[0], C[1]-A[1])
+            v2 = (px-A[0],   py-A[1])
+            den = v0[0]*v1[1] - v1[0]*v0[1]
+            if abs(den) <= 1e-14:
+                continue
+            u = (v2[0]*v1[1] - v1[0]*v2[1]) / den
+            v = (v0[0]*v2[1] - v2[0]*v0[1]) / den
+            ww = 1.0 - u - v
+            if u >= -1e-9 and v >= -1e-9 and ww >= -1e-9:
+                z = ww*A[2] + u*B[2] + v*C[2]
+                if z_best is None or z > z_best:
+                    z_best = z
+        return z_best
+
+    def _maxz_fallback(candidate_ids):
+        """
+        Devuelve la MAXIMA z proyectada sobre los triangulos candidatos.
+        Uso: cuando el punto cae en una brecha entre parches, la mayor z
+        de los triangulos cercanos representa el techo del domo sobre ese punto.
+        NO usar la z del triangulo mas cercano (podria ser un triangulo de la
+        base/borde del domo con z~0 que esta cerca en XY pero debajo del punto).
+        """
+        best_z = None
+        for idx in candidate_ids:
+            qz, _ = _clamp_bary_z(px, py, triangles[idx])
+            if best_z is None or qz > best_z:
+                best_z = qz
+        return best_z
+
+    # Acumular candidatos expandiendo el radio hasta search_radius
+    all_candidates = set()
+    z_exact = None
+
+    for r in range(0, search_radius + 1):
+        if r == 0:
+            new_cells = [(cx, cy)]
+        else:
+            new_cells = []
+            for dix in range(-r, r + 1):
+                for diy in range(-r, r + 1):
+                    if abs(dix) == r or abs(diy) == r:
+                        new_cells.append((
+                            max(0, min(n_bins-1, cx + dix)),
+                            max(0, min(n_bins-1, cy + diy)),
+                        ))
+
+        new_ids = set()
+        for cell in new_cells:
+            new_ids.update(grid.get(cell, []))
+        all_candidates |= new_ids
+
+        if all_candidates:
+            z_exact = _eval_exact(all_candidates)
+            if z_exact is not None:
+                return z_exact          # Coincidencia exacta → retornar
+
+    # ── Fase 2: máxima z proyectada sobre candidatos ──────────────────────────
+    # El punto cae en una brecha entre parches.
+    # La mayor z entre todos los triángulos candidatos cercanos representa
+    # el techo del domo sobre ese punto (los triángulos de base/borde con z~0
+    # son ignorados al tomar el máximo).
+    if all_candidates:
+        return _maxz_fallback(all_candidates)
+
+    # Último recurso: ningún candidato en el radio → máximo global (raro).
+    best_z = None
+    for tri in triangles:
+        qz, _ = _clamp_bary_z(px, py, tri)
+        if best_z is None or qz > best_z:
+            best_z = qz
+    return best_z
+
+
+def _verify_cube_robust(cube, triangles, spatial_index, ok_threshold=100.0, vertical_tol=0.0):
+    """
+    Verifica un cubo contra la superficie de apantallamiento usando una
+    grilla volumétrica 3-D uniforme.
+
+    Para cada punto (px, py, pz) de la grilla interior se consulta la
+    altura del escudo z_shield(px, py) y se verifica si pz <= z_shield.
+    El porcentaje resultante es la fracción del VOLUMEN del equipo que
+    queda bajo la capa de apantallamiento, independientemente de la forma
+    curva de dicha capa.
+    """
+    import numpy as np
+
+    x0, x1 = cube['x0'], cube['x1']
+    y0, y1 = cube['y0'], cube['y1']
+    z0, z1 = cube['z0'], cube['z1']
+
+    # Grilla 3-D: 15×15×10 = 2250 puntos interiores
+    # Suficiente resolución para capturar la intersección de la capa curva
+    # con el volumen del equipo sin ser excesivamente lento.
+    NX, NY, NZ = 15, 15, 10
+
+    protected_count = 0
+    total_count     = 0
+    protected_pts   = []
+    unprotected_pts = []
+    min_margin      = None
+    max_margin      = None
+
+    for px in np.linspace(x0, x1, NX):
+        for py in np.linspace(y0, y1, NY):
+            # Una sola consulta por columna (px, py): reutilizar z_shield
+            # para todos los NZ niveles verticales de esa columna.
+            z_shield = _query_shield_robust(float(px), float(py),
+                                            triangles, spatial_index)
+            for pz in np.linspace(z0, z1, NZ):
+                total_count += 1
+                pz_f = float(pz)
+                if z_shield is None:
+                    is_ok  = False
+                    margin = None
+                else:
+                    margin = float(z_shield - pz_f)
+                    is_ok  = pz_f <= z_shield + vertical_tol
+                    min_margin = margin if min_margin is None else min(min_margin, margin)
+                    max_margin = margin if max_margin is None else max(max_margin, margin)
+
+                if is_ok:
+                    protected_count += 1
+                    protected_pts.append({'x': float(px), 'y': float(py), 'z': pz_f})
+                else:
+                    unprotected_pts.append({'x': float(px), 'y': float(py), 'z': pz_f})
+
+    percent_area = 100.0 * protected_count / total_count if total_count > 0 else 0.0
+    is_ok        = percent_area >= ok_threshold
+
+    return {
+        'cube':               cube,
+        'is_ok':              is_ok,
+        'percent_area':       percent_area,
+        'protected_count':    protected_count,
+        'total_count':        total_count,
+        'protected_weight':   float(protected_count),
+        'total_weight':       float(total_count),
+        'min_margin':         min_margin,
+        'protected_points':   protected_pts,
+        'unprotected_points': unprotected_pts,
+    }
+
+
+def verify_equipos_rapido(cubes_raw):
+    global _shield_cache
+    if not _shield_cache or not _shield_cache.get('triangles'):
+        raise RuntimeError('No hay superficie de apantallamiento calculada. Calcule primero.')
+
+    triangles     = _shield_cache['triangles']
+    spatial_index = _shield_cache['spatial_index']
+    fn_normalize  = _shield_cache.get('fn_normalize')
+    ok_threshold  = _shield_cache.get('ok_threshold', 99.5)
+
+    if fn_normalize is None:
+        raise RuntimeError('Funciones de normalizacion no disponibles en el cache.')
+
+    records = []
+    for i, c in enumerate(cubes_raw):
+        cube_dict = {
+            'name': c.get('name', 'Equipo ' + str(i + 1)),
+            'x':    float(c['x']),
+            'y':    float(c['y']),
+            'z':    float(c.get('z', 0.0)),
+            'dx':   float(c['dx']),
+            'dy':   float(c['dy']),
+            'dz':   float(c['dz']),
+        }
+        cube   = fn_normalize(cube_dict, i)
+        record = _verify_cube_robust(cube, triangles, spatial_index, ok_threshold)
+        records.append(record)
+
+    return _format_verification(records)
