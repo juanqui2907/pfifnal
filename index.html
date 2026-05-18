@@ -1436,7 +1436,7 @@
           Descargar / Abrir manual (PDF)
         </a>
         <div style="margin-top:14px;">
-          <a href="https://drive.google.com/file/d/1LpJsv5ONFQrYzN_lH04piRgFAAlavXe3/view?usp=sharing" target="_blank" rel="noopener" style="font-size:0.78rem;color:var(--blue-mid);text-decoration:underline;">
+          <a href="https://drive.google.com/file/d/1jMs9NbHLb9oNSeWP4GXZgkbF7DsxCHGR/view?usp=sharing" target="_blank" rel="noopener" style="font-size:0.78rem;color:var(--blue-mid);text-decoration:underline;">
             ¿No abre? Ver manual en Google Drive
           </a>
         </div>
@@ -1473,7 +1473,7 @@ function handleManualDownload(e) {
     e.preventDefault();
     const w = window.open('ManualDeUsuario.pdf', '_blank');
     if (!w || w.closed || typeof w.closed === 'undefined') {
-      window.location.href = 'https://drive.google.com/file/d/1LpJsv5ONFQrYzN_lH04piRgFAAlavXe3/view?usp=sharing';
+      window.location.href = 'https://drive.google.com/file/d/1jMs9NbHLb9oNSeWP4GXZgkbF7DsxCHGR/view?usp=sharing';
     }
   } else {
     /* Desde servidor: intentamos fetch para verificar existencia */
@@ -1486,11 +1486,11 @@ function handleManualDownload(e) {
           a.download = 'ManualDeUsuario.pdf';
           a.click();
         } else {
-          window.open('https://drive.google.com/file/d/1LpJsv5ONFQrYzN_lH04piRgFAAlavXe3/view?usp=sharing', '_blank');
+          window.open('https://drive.google.com/file/d/1jMs9NbHLb9oNSeWP4GXZgkbF7DsxCHGR/view?usp=sharing', '_blank');
         }
       })
       .catch(() => {
-        window.open('https://drive.google.com/file/d/1LpJsv5ONFQrYzN_lH04piRgFAAlavXe3/view?usp=sharing', '_blank');
+        window.open('https://drive.google.com/file/d/1jMs9NbHLb9oNSeWP4GXZgkbF7DsxCHGR/view?usp=sharing', '_blank');
       });
   }
 }
