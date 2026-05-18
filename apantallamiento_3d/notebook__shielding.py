@@ -37097,18 +37097,49 @@ def build_spatial_index_fase6(triangles, n_bins=80):
     }
 
 
+def _egm_shield_height(px, py):
+    """
+    Fórmula directa IEEE 998 — esfera rodante.
+    Calcula la altura de protección en (px, py) para todos los mástiles.
+    Retorna (z_shield_max, 'EGM_directo') o (None, None).
+
+    z_shield = h_m - S + sqrt(S² - r²)
+    donde r = distancia horizontal al mástil.
+    """
+    try:
+        _masts = mast_inputs  # global del namespace del notebook
+        _S = float(S)
+    except NameError:
+        return None, None
+
+    z_best = None
+    for (mx, my, mh) in _masts:
+        r2 = (px - mx) ** 2 + (py - my) ** 2
+        if r2 > _S * _S:
+            continue
+        z_here = float(mh) - _S + sqrt(max(0.0, _S * _S - r2))
+        if z_best is None or z_here > z_best:
+            z_best = z_here
+
+    if z_best is None:
+        return None, None
+    return z_best, "EGM_directo"
+
+
 def query_shield_height_fase6(px, py, triangles, spatial_index):
     """
     Retorna:
       - z_cubierta máxima encontrada en XY;
       - nombre de la superficie que la aporta.
-    Si no hay cubierta en ese XY, retorna (None, None).
 
-    Fallback: si la triangulación no cubre el punto (bbox miss o celda vacía),
-    se evalúa directamente la fórmula de la esfera rodante IEEE 998 sobre
-    mast_inputs y S (variables globales del namespace del notebook).
-    Esto evita falsos negativos en bordes del spatial_index.
+    Siempre toma el máximo entre la triangulación y la fórmula directa
+    IEEE 998 (esfera rodante). Esto corrige inexactitudes de la malla
+    triangulada en bordes, vértices y zonas de baja resolución.
     """
+    # ── 1. Fórmula directa IEEE 998 (siempre calculada) ──────────────────────
+    z_egm, src_egm = _egm_shield_height(px, py)
+
+    # ── 2. Triangulación ──────────────────────────────────────────────────────
     if spatial_index is None:
         candidate_ids = range(len(triangles))
     else:
@@ -37119,8 +37150,7 @@ def query_shield_height_fase6(px, py, triangles, spatial_index):
         n_bins = spatial_index["n_bins"]
 
         if px < xmin or px > xmax or py < ymin or py > ymax:
-            # Punto fuera del bbox de la triangulación — usar fallback directo
-            return _query_shield_direct_egm(px, py)
+            return z_egm, src_egm  # punto fuera del bbox — solo EGM directo
 
         ix = int(np.clip(np.floor((px - xmin) / (xmax - xmin) * n_bins), 0, n_bins - 1))
         iy = int(np.clip(np.floor((py - ymin) / (ymax - ymin) * n_bins), 0, n_bins - 1))
@@ -37128,11 +37158,10 @@ def query_shield_height_fase6(px, py, triangles, spatial_index):
         candidate_ids = spatial_index["grid"].get((ix, iy), [])
 
         if not candidate_ids:
-            # Celda vacía en el índice — usar fallback directo
-            return _query_shield_direct_egm(px, py)
+            return z_egm, src_egm  # celda vacía — solo EGM directo
 
-    z_best = None
-    source_best = None
+    z_tri = None
+    src_tri = None
 
     for idx in candidate_ids:
         tri = triangles[idx]
@@ -37155,47 +37184,22 @@ def query_shield_height_fase6(px, py, triangles, spatial_index):
         if z_here is None:
             continue
 
-        if z_best is None or z_here > z_best:
-            z_best = z_here
-            source_best = tri["trace_name"]
+        if z_tri is None or z_here > z_tri:
+            z_tri = z_here
+            src_tri = tri["trace_name"]
 
-    # Si la triangulación no encontró nada para este punto interior,
-    # también intentar el fallback directo
-    if z_best is None:
-        return _query_shield_direct_egm(px, py)
-
-    return z_best, source_best
-
-
-def _query_shield_direct_egm(px, py):
-    """
-    Calcula la altura de protección en (px, py) directamente con la fórmula
-    de la esfera rodante IEEE 998, sin depender de la triangulación.
-
-    z_shield = h_m - S + sqrt(S² - r²)
-    donde r = distancia horizontal al mástil.
-
-    Retorna (z_shield_max, 'EGM_directo') o (None, None) si ningún mástil
-    tiene cobertura horizontal sobre el punto.
-    """
-    try:
-        _masts = mast_inputs   # variable global del namespace del notebook
-        _S     = float(S)
-    except NameError:
+    # ── 3. Tomar el máximo entre triangulación y EGM directo ─────────────────
+    if z_tri is not None and z_egm is not None:
+        if z_tri >= z_egm:
+            return z_tri, src_tri
+        else:
+            return z_egm, src_egm
+    elif z_tri is not None:
+        return z_tri, src_tri
+    elif z_egm is not None:
+        return z_egm, src_egm
+    else:
         return None, None
-
-    z_best = None
-    for i, (mx, my, mh) in enumerate(_masts):
-        r = sqrt((px - mx) ** 2 + (py - my) ** 2)
-        if r > _S:
-            continue  # fuera del radio máximo de la esfera
-        z_here = float(mh) - _S + sqrt(max(0.0, _S ** 2 - r ** 2))
-        if z_best is None or z_here > z_best:
-            z_best = z_here
-
-    if z_best is None:
-        return None, None
-    return z_best, "EGM_directo"
 
 
 # =========================================================
