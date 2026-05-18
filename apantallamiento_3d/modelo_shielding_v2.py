@@ -87,6 +87,8 @@ def _make_ipython_mock():
     disp.clear_output = _noop
     ip.display        = disp
     ip.get_ipython    = lambda: None
+    # Matplotlib consulta version_info cuando detecta IPython.
+    ip.version_info   = (9, 0, 0)
     return ip, disp
 
 
@@ -229,49 +231,56 @@ def _get_compiled_code():
 
 def _format_verification(records: list) -> list:
     """
-    Convierte fase6_verification_records del notebook al formato
-    que espera la API REST de TerraShield.
-
-    Usa percent_area (ponderado por área) como métrica principal,
-    igual que el notebook internamente para decidir is_ok.
+    Convierte los registros de FASE 6 al formato que espera la API REST de
+    TerraShield. Mantiene compatibilidad con registros antiguos y con la nueva
+    verificación volumétrica por nube de puntos.
     """
     out = []
-    for rec in records:
-        cube        = rec.get('cube', {})
-        is_ok       = bool(rec.get('is_ok', False))
-        protected   = int(rec.get('protected_count', 0))
-        total       = int(rec.get('total_count', 0))
-        min_margin  = rec.get('min_margin')
-        unprotected = rec.get('unprotected_points', [])
+    for rec in records or []:
+        cube = rec.get('cube', {}) or {}
 
-        # Usar percent_area (ponderado por área) — mismo criterio que is_ok
-        protected_w = float(rec.get('protected_weight', 0.0))
-        total_w     = float(rec.get('total_weight', 0.0))
-        if total_w > 0:
-            pct = round(100.0 * protected_w / total_w, 2)
-        elif total > 0:
-            pct = round(100.0 * protected / total, 2)
-        else:
-            pct = 0.0
+        # Compatibilidad: la FASE 6 volumétrica puede entregar porcentajes con
+        # nombres nuevos; la interfaz sigue consumiendo conteos de puntos.
+        protected = int(rec.get('protected_count', rec.get('protected_points', 0)) or 0)
+        total = int(rec.get('total_count', rec.get('total_points', 0)) or 0)
+
+        if total <= 0 and 'protected_percentage' in rec:
+            total = int(rec.get('total_points', 0) or 0)
+            protected = int(round(total * float(rec.get('protected_percentage', 0.0)) / 100.0))
+
+        pct = (protected / total * 100.0) if total > 0 else float(rec.get('protected_percentage', 0.0) or 0.0)
+        is_ok = bool(rec.get('is_ok', pct >= 100.0 - 1e-9))
+
+        min_margin = rec.get('min_margin')
+        unprotected = rec.get('unprotected_points', []) or []
 
         max_excess = None
         if not is_ok and min_margin is not None:
-            max_excess = abs(float(min_margin))
+            try:
+                max_excess = abs(float(min_margin))
+            except Exception:
+                max_excess = None
 
-        critical_pts = [
-            {'x': float(p['x']), 'y': float(p['y']), 'z': float(p['z'])}
-            for p in unprotected
-        ]
+        critical_pts = []
+        for p in unprotected:
+            try:
+                critical_pts.append({
+                    'x': float(p['x']),
+                    'y': float(p['y']),
+                    'z': float(p.get('z', p.get('z_equipment'))),
+                })
+            except Exception:
+                continue
 
         out.append({
-            'equipment_name':               cube.get('name', 'Equipo'),
+            'equipment_name':               cube.get('name') or rec.get('equipment_name', 'Equipo'),
             'fully_shielded':               is_ok,
-            'shielded_pct':                 pct,
             'points_evaluated':             total,
             'points_protected':             protected,
-            'points_not_protected':         total - protected,
-            'points_without_interpolation': 0,
+            'points_not_protected':         max(0, total - protected),
+            'points_without_interpolation': int(rec.get('points_without_layer_xy', rec.get('points_without_interpolation', 0)) or 0),
             'max_excess_m':                 max_excess,
+            'shielded_pct':                 pct,
             'status_text':  'Apantallado' if is_ok else 'No completamente protegido',
             'critical_points':              critical_pts,
         })
@@ -388,11 +397,19 @@ def run_shielding_model_ui(
     global _shield_cache
     try:
         _shield_cache = {
+            # Nueva FASE 6 volumétrica: interpoladores directos de capa.
+            'surface_interpolators': ns.get('fase6_surface_interpolators', []),
+            'fn_build_cloud':        ns.get('fase6_build_equipment_point_cloud'),
+            'fn_verify_cloud':       ns.get('fase6_verify_equipment_cloud'),
+            'point_spacing':         ns.get('FASE6_POINT_SPACING', 0.25),
+            'z_tol':                 ns.get('FASE6_Z_TOL', 1e-6),
+
+            # Compatibilidad con la verificación anterior.
             'triangles':     ns.get('fase6_shield_triangles', []),
             'spatial_index': ns.get('fase6_spatial_index'),
             'fn_normalize':  ns.get('normalize_cube_record_fase6'),
             'fn_verify':     ns.get('verify_cube_shielding_fase6'),
-            'ok_threshold':  ns.get('FASE6_OK_PERCENT_THRESHOLD', 99.5),
+            'ok_threshold':  ns.get('FASE6_OK_PERCENT_THRESHOLD', 100.0),
         }
     except Exception:
         _shield_cache = None
@@ -685,15 +702,127 @@ def _verify_cube_robust(cube, triangles, spatial_index, ok_threshold=100.0, vert
     }
 
 
+def _legacy_record_from_cloud_result(cube_dict, summary, point_rows, max_points=1200):
+    """
+    Adapta el resultado de la FASE 6 volumétrica al formato interno heredado
+    para no tocar la lógica de recomendaciones ni el frontend existente.
+    """
+    import numpy as _np
+
+    protected = _np.asarray(point_rows['protected'], dtype=bool)
+    unprotected = ~protected
+    z_layer = _np.asarray(point_rows['z_layer'], dtype=float)
+    z_eq = _np.asarray(point_rows['z_equipment'], dtype=float)
+    margin = z_layer - z_eq
+    finite_margin = margin[_np.isfinite(margin)]
+
+    min_margin = float(_np.min(finite_margin)) if finite_margin.size else None
+    max_margin = float(_np.max(finite_margin)) if finite_margin.size else None
+
+    def _sample_indices(mask, limit):
+        idx = _np.where(mask)[0]
+        if limit is not None and len(idx) > limit:
+            # Muestreo determinístico para evitar respuestas JSON excesivas.
+            step = max(1, int(_np.ceil(len(idx) / float(limit))))
+            idx = idx[::step][:limit]
+        return idx
+
+    def _float_or_none(v):
+        try:
+            vf = float(v)
+            return vf if _np.isfinite(vf) else None
+        except Exception:
+            return None
+
+    def _points(mask):
+        pts = []
+        for ii in _sample_indices(mask, max_points):
+            pts.append({
+                'x': float(point_rows['x'][ii]),
+                'y': float(point_rows['y'][ii]),
+                'z': float(point_rows['z_equipment'][ii]),
+                'z_shield': _float_or_none(point_rows['z_layer'][ii]),
+                'margin': _float_or_none(margin[ii]),
+                'protected': bool(point_rows['protected'][ii]),
+            })
+        return pts
+
+    total = int(summary.get('total_points', len(protected)))
+    n_ok = int(summary.get('protected_points', int(_np.count_nonzero(protected))))
+    pct = float(summary.get('protected_percentage', (100.0 * n_ok / total if total else 0.0)))
+
+    return {
+        'cube': {
+            'name': cube_dict.get('name', summary.get('equipment_name', 'Equipo')),
+            'x0': float(cube_dict['x']),
+            'x1': float(cube_dict['x']) + float(cube_dict['dx']),
+            'y0': float(cube_dict['y']),
+            'y1': float(cube_dict['y']) + float(cube_dict['dy']),
+            'z0': float(cube_dict.get('z', 0.0)),
+            'z1': float(cube_dict.get('z', 0.0)) + float(cube_dict['dz']),
+            'dx': float(cube_dict['dx']),
+            'dy': float(cube_dict['dy']),
+            'dz': float(cube_dict['dz']),
+        },
+        'is_ok': bool(pct >= 100.0 - 1e-9),
+        'percent_area': pct,
+        'percent_points': pct,
+        'protected_count': n_ok,
+        'total_count': total,
+        'protected_weight': float(n_ok),
+        'total_weight': float(total),
+        'min_margin': min_margin,
+        'max_margin': max_margin,
+        'points_without_layer_xy': int(summary.get('points_without_layer_xy', 0) or 0),
+        'protected_points': _points(protected),
+        'unprotected_points': _points(unprotected),
+        'face_percentages': {},
+    }
+
+
 def verify_equipos_rapido(cubes_raw):
     global _shield_cache
-    if not _shield_cache or not _shield_cache.get('triangles'):
+    if not _shield_cache:
         raise RuntimeError('No hay superficie de apantallamiento calculada. Calcule primero.')
 
-    triangles     = _shield_cache['triangles']
-    spatial_index = _shield_cache['spatial_index']
-    fn_normalize  = _shield_cache.get('fn_normalize')
-    ok_threshold  = _shield_cache.get('ok_threshold', 99.5)
+    # Preferir la nueva verificación volumétrica de FASE 6.
+    surface_interpolators = _shield_cache.get('surface_interpolators') or []
+    fn_build_cloud = _shield_cache.get('fn_build_cloud')
+    fn_verify_cloud = _shield_cache.get('fn_verify_cloud')
+
+    if surface_interpolators and callable(fn_build_cloud) and callable(fn_verify_cloud):
+        records = []
+        spacing = float(_shield_cache.get('point_spacing', 0.25) or 0.25)
+        z_tol = float(_shield_cache.get('z_tol', 1e-6) or 1e-6)
+
+        for i, c in enumerate(cubes_raw):
+            cube_dict = {
+                'name': c.get('name', 'Equipo ' + str(i + 1)),
+                'x':    float(c['x']),
+                'y':    float(c['y']),
+                'z':    float(c.get('z', 0.0)),
+                'dx':   float(c['dx']),
+                'dy':   float(c['dy']),
+                'dz':   float(c['dz']),
+            }
+            cloud = fn_build_cloud(cube_dict, spacing=spacing)
+            summary, point_rows = fn_verify_cloud(
+                equipment_cloud=cloud,
+                surface_interpolators=surface_interpolators,
+                z_tol=z_tol,
+            )
+            records.append(_legacy_record_from_cloud_result(cube_dict, summary, point_rows))
+
+        return _format_verification(records)
+
+    # Compatibilidad con el método anterior, por si se ejecuta un notebook viejo.
+    triangles = _shield_cache.get('triangles') or []
+    if not triangles:
+        raise RuntimeError('No hay superficie de apantallamiento calculada. Calcule primero.')
+
+    spatial_index = _shield_cache.get('spatial_index')
+    fn_normalize = _shield_cache.get('fn_normalize')
+    ok_threshold = _shield_cache.get('ok_threshold', 100.0)
 
     if fn_normalize is None:
         raise RuntimeError('Funciones de normalizacion no disponibles en el cache.')
@@ -709,7 +838,7 @@ def verify_equipos_rapido(cubes_raw):
             'dy':   float(c['dy']),
             'dz':   float(c['dz']),
         }
-        cube   = fn_normalize(cube_dict, i)
+        cube = fn_normalize(cube_dict, i)
         record = _verify_cube_robust(cube, triangles, spatial_index, ok_threshold)
         records.append(record)
 

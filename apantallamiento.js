@@ -393,16 +393,20 @@ function apantRenderResults(data) {
       // Guardar trazas del modelo para actualizar el chart sin recalcular.
       // Excluir trazas de equipos que Python también mete en la figura —
       // el JS las gestiona exclusivamente vía _apantBuildEdgeTraces().
-      // Python genera: Mesh3d con name=cubeName y Scatter3d con name="Aristas cubeName"
+      // Python genera:
+      //   Mesh3d   → name = cubeName  o  "Volumen del equipo - cubeName"
+      //   Scatter3d→ name = "Aristas cubeName"  o  "Aristas del equipo - cubeName"
       const _cubeNameSet = new Set(ApantState.cubes.map(c => c.name));
       _apantModelTraces = fig.data.filter(t => {
         const tname = (t.name || '').trim();
         const baseName = tname.split(' | ')[0].trim();
         // Nombre exacto (Mesh3d del cuerpo)
         if (_cubeNameSet.has(tname) || _cubeNameSet.has(baseName)) return false;
-        // "Aristas <nombre>" (Scatter3d de bordes que genera Python)
+        // Variantes con prefijo que genera Python
         for (const cname of _cubeNameSet) {
-          if (tname === `Aristas ${cname}` || baseName === `Aristas ${cname}`) return false;
+          if (tname === `Aristas ${cname}`             || baseName === `Aristas ${cname}`)             return false;
+          if (tname === `Aristas del equipo - ${cname}`|| baseName === `Aristas del equipo - ${cname}`) return false;
+          if (tname === `Volumen del equipo - ${cname}`|| baseName === `Volumen del equipo - ${cname}`) return false;
         }
         return true;
       });
@@ -681,11 +685,9 @@ function apantRenderVerif(verif) {
     : `${nTotal - nOk} de ${nTotal} equipo${nTotal - nOk !== 1 ? 's' : ''} presenta${nTotal - nOk === 1 ? '' : 'n'} puntos fuera de la capa resultante.`;
 
   const rows = verif.map(v => {
-    // Usar shielded_pct del servidor (ponderado por área, igual que is_ok)
-    // Si no viene, calcular desde conteo como fallback
-    const pct = v.shielded_pct != null
-      ? v.shielded_pct
-      : (v.points_evaluated > 0 ? (v.points_protected / v.points_evaluated) * 100 : null);
+    const pct = v.points_evaluated > 0
+      ? (v.points_protected / v.points_evaluated) * 100
+      : null;
     const pctStr   = pct != null ? pct.toFixed(1) + '%' : '—';
     const pctColor = pct == null ? '' : pct >= 100 ? 'color:#16a34a;' : pct >= 80 ? 'color:#d97706;' : 'color:#dc2626;';
 

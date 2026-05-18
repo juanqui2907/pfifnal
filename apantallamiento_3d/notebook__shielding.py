@@ -28504,42 +28504,56 @@ fig_15 = plot_single_mast_surfaces_with_crests_and_mq_plot15(
 # @title
 # =========================================================
 # FASE 4 — PROTOTIPO COMPARATIVO DE SUPERFICIES M-M-Q
-# USANDO FRONTERAS FINALES POST-FASE 3C
+# USANDO FRONTERAS FINALES POST-FASE 3B
+# + ANCLA INTERNA PARA M-M-Q CUYA FRONTERA M-M ES GUARDA DIRECTA
 # =========================================================
 #
 # Objetivo:
 #   Construir y comparar superficies M-M-Q usando como frontera
 #   superior las crestas/cables almacenados en el registro final
-#   post-FASE 3C, sin recalcular la frontera M-M.
+#   generado en FASE 3B, sin recalcular la frontera M-M.
+#
+#   Además, cuando la frontera superior M-M corresponde a un cable de guarda
+#   directo o fragmento de guarda directa, se puede aplicar una guía interna
+#   P_mid-Q:
+#
+#       P_mid = punto medio de la guarda M-M
+#       Q     = punto Q de la superficie M-M-Q
+#
+#   Con esos dos puntos se construye una curva intermedia en el plano vertical
+#   P_mid-Q usando una circunferencia de radio S. Esa curva NO se agrega al
+#   crest_registry y NO se considera una cresta real; solo se usa como ancla
+#   interna de interpolación para suavizar el parche M-M-Q con guarda.
 #
 # Criterio:
-#   - Esta celda parte de FASE 3C como última salida válida.
+#   - Esta celda parte de FASE 3B como última salida válida.
 #   - La frontera superior M-M se toma exclusivamente desde:
-#         resultado_crestas_final_13C["crest_registry"]
-#   - Si la frontera corresponde a un cable de guarda directo,
-#     se construye un parche M-M-Q tipo cable.
-#   - Si la frontera corresponde a una cresta registrada,
-#     se construye un parche M-M-Q curvo desde cero.
-#   - Las fronteras omitidas por FASE 3C no se usan.
+#
+#         resultado_crestas_final["crest_registry"]
+#
+#   - Si la frontera corresponde a un cable de guarda directo, se construye
+#     un parche M-M-Q tipo cable y opcionalmente se corrige con la guía P_mid-Q.
+#   - Si la frontera corresponde a una cresta registrada, se construye un
+#     parche M-M-Q curvo desde cero, sin usar la guía P_mid-Q.
+#   - Las fronteras omitidas en el registro final no se usan.
 #   - La superficie se mantiene con Z >= 0.
 #
-# Acciones:
-#   - Obtiene la frontera M-M desde el registro final post-FASE 3C.
-#   - Construye las curvas laterales M-Q sobre la superficie de mástil solo.
-#   - Genera el parche M-M-Q según el tipo de frontera superior.
-#   - Aplica recorte superior en Z contra la cresta.
-#   - Aplica una máscara en XY para limitar el parche al dominio válido.
-#   - Busca automáticamente un caso con cable de guarda y un caso con cresta.
-#   - Grafica una comparación entre los casos disponibles.
+# Qué NO hace la guía interna P_mid-Q:
+#   - NO modifica resultado_crestas_final.
+#   - NO modifica crest_registry_final.
+#   - NO crea una nueva cresta real.
+#   - NO cambia triangles_final_3B.
+#   - NO toca M-M-Q con frontera superior tipo cresta.
 #
 # Entrada esperada:
-#   - kept_triangles_13C
-#   - resultado_crestas_final_13C
-#   - crest_registry_final_13C
+#   - triangles_final_3B
+#   - resultado_crestas_final
+#   - crest_registry_final
 #   - S
 #
 # Salida:
 #   - fig_16
+#   - fase4_mmq_guard_anchor_debug_rows
 # =========================================================
 
 import numpy as np
@@ -28550,21 +28564,6 @@ from matplotlib.path import Path
 
 # =========================================================
 # 0) VALIDACIÓN DE ENTRADAS POST-FASE 3B
-# =========================================================
-#
-# FASE 4 — PROTOTIPO COMPARATIVO DE SUPERFICIES M-M-Q
-# USANDO FRONTERAS FINALES POST-FASE 3B
-#
-# Entrada esperada:
-#   - triangles_final_3B
-#   - resultado_crestas_final
-#   - crest_registry_final
-#   - S
-#
-# No se usan variables de FASE 3C:
-#   - kept_triangles_13C
-#   - resultado_crestas_final_13C
-#   - crest_registry_final_13C
 # =========================================================
 
 required_vars_fase4 = [
@@ -28599,6 +28598,7 @@ FASE4_DIRECT_GUARD_SOURCES = {
     "direct_guard_wire",
     "direct_guard_wire_segment_MN",
     "direct_guard_wire_fragment_NN",
+    "direct_guard_wire_fragment",
 }
 
 FASE4_SPECIAL_CREST_SOURCES = {
@@ -28613,8 +28613,36 @@ FASE4_SPECIAL_CREST_SOURCES = {
 FASE4_OMITTED_SOURCES = {
     "shared_guard_free_edge_omitted",
     "independent_guard_lines_subcase3",
+    # Fuente heredada de versiones anteriores. Se conserva solo por compatibilidad.
     "fase3C_mmm_crest_crosses_special_crest",
 }
+
+# ---------------------------------------------------------
+# Parámetros del ancla interna para M-M-Q con guarda directa.
+# ---------------------------------------------------------
+
+ENABLE_FASE4_MMQ_GUARD_MID_ANCHOR = True
+
+# Peso máximo de la guía interna sobre Z.
+# El peso real se atenúa hacia las fronteras, así que las fronteras exactas
+# se conservan después del ajuste.
+FASE4_MMQ_GUARD_MID_ANCHOR_STRENGTH = 0.75
+
+# Control de localización lateral: mayor valor = afecta más cerca del centro s=0.5.
+FASE4_MMQ_GUARD_MID_ANCHOR_LATERAL_POWER = 1.15
+
+# Control de localización vertical: mayor valor = afecta más lejos de la guarda y de Q.
+FASE4_MMQ_GUARD_MID_ANCHOR_VERTICAL_POWER = 0.85
+
+# Si True, solo aplica cuando la curva circular P_mid-Q de radio S existe.
+FASE4_MMQ_GUARD_ANCHOR_REQUIRE_RADIUS = True
+
+# Para depuración visual en FASE 4.
+FASE4_SHOW_MMQ_GUARD_MID_ANCHOR_GUIDE = False
+FASE4_SHOW_MMQ_GUARD_MID_ANCHOR_POINTS = False
+
+# Registro diagnóstico global de la última ejecución de FASE 4.
+fase4_mmq_guard_anchor_debug_rows = []
 
 
 # =========================================================
@@ -28754,13 +28782,17 @@ def local_resample_curve_xyz(curve_xyz, npts=120):
     C = np.asarray(curve_xyz, dtype=float)
 
     if len(C) < 2:
-        return np.repeat(C[:1], npts, axis=0)
+        out = np.repeat(C[:1], npts, axis=0)
+        out[:, 2] = np.maximum(out[:, 2], 0.0)
+        return out
 
     d = np.linalg.norm(np.diff(C, axis=0), axis=1)
     s_old = np.concatenate([[0.0], np.cumsum(d)])
 
     if s_old[-1] < 1e-12:
-        return np.repeat(C[:1], npts, axis=0)
+        out = np.repeat(C[:1], npts, axis=0)
+        out[:, 2] = np.maximum(out[:, 2], 0.0)
+        return out
 
     s_old = s_old / s_old[-1]
     s_new = np.linspace(0.0, 1.0, npts)
@@ -28802,13 +28834,19 @@ def local_orient_curve_xyz(curve_xyz, start_node, end_node):
     return C
 
 
+def cross2d_fase4(u, v):
+    u = np.asarray(u, dtype=float)
+    v = np.asarray(v, dtype=float)
+    return float(u[0] * v[1] - u[1] * v[0])
+
+
 # =========================================================
-# 3) UTILIDADES DE REGISTRO FINAL POST-FASE 3C
+# 3) UTILIDADES DE REGISTRO FINAL POST-FASE 3B
 # =========================================================
 
 def get_crest_registry_from_result(registry_result):
     """
-    Obtiene crest_registry desde el resultado final post-FASE 3C.
+    Obtiene crest_registry desde el resultado final post-FASE 3B.
     """
     if registry_result is None:
         return None
@@ -28840,20 +28878,14 @@ def get_top_boundary_from_registry(
     ns=80
 ):
     """
-    Retorna la frontera superior M-M desde el registro final post-FASE 3C.
+    Retorna la frontera superior M-M desde el registro final post-FASE 3B.
 
     Retorna:
         C, top_name, top_kind, source
 
     top_name:
         - "guard_wire" si source pertenece a FASE4_DIRECT_GUARD_SOURCES.
-        - "crest" para cualquier otra frontera activa:
-            * cresta base;
-            * cresta por guardas independientes;
-            * cresta por una guarda + dos apoyos;
-            * cresta por mástil común + K;
-            * cresta por tres guardas;
-            * cresta por cuadrilátero cerrado.
+        - "crest" para cualquier otra frontera activa.
     """
     item = get_registry_item_for_edge(
         registry_result=registry_result,
@@ -28864,7 +28896,7 @@ def get_top_boundary_from_registry(
     if item is None:
         return None, None, None, None
 
-    # Si la frontera fue omitida por FASE 3C o por cualquier caso anterior,
+    # Si la frontera fue omitida por FASE 3B o por cualquier caso anterior,
     # no debe usarse para construir MMQ.
     if item.get("omit", False):
         return None, None, None, None
@@ -28934,10 +28966,268 @@ def curve_mast_to_q_on_single_mast_surface(
     return x, y, z
 
 
+# =========================================================
+# 4A) ANCLA INTERNA P_mid-Q PARA M-M-Q CON GUARDA
+# =========================================================
+
+def build_mmq_guard_mid_anchor_curve_fase4(
+    C,
+    q_point,
+    sphere_radius,
+    nt=80,
+    z_eps=1e-8
+):
+    """
+    Construye una curva guía interna P_mid-Q para M-M-Q con guarda.
+
+    P_mid se toma sobre la frontera superior C, aproximadamente en s=0.5.
+    La curva se calcula en el plano vertical P_mid-Q como el arco inferior
+    de una circunferencia de radio S que pasa por P_mid y Q.
+
+    Esta curva NO es una cresta real. Solo sirve como referencia interna
+    para ajustar suavemente la interpolación del parche.
+    """
+    C = np.asarray(C, dtype=float)
+    q_point = np.asarray(q_point, dtype=float)
+    R = float(sphere_radius)
+
+    if C.ndim != 2 or C.shape[1] != 3 or len(C) < 2:
+        return None, {
+            "status": "invalid_guard_curve",
+            "applied": False,
+        }
+
+    if R <= 0:
+        return None, {
+            "status": "invalid_sphere_radius",
+            "applied": False,
+        }
+
+    C_mid = local_resample_curve_xyz(C, npts=3)[1].astype(float)
+    C_mid[2] = max(C_mid[2], 0.0)
+
+    q3 = q_point.astype(float).copy()
+    q3[2] = 0.0
+
+    v_xy = q3[:2] - C_mid[:2]
+    d_xy = float(np.linalg.norm(v_xy))
+    chord_len = float(np.linalg.norm(q3 - C_mid))
+
+    if d_xy <= 1e-10:
+        return None, {
+            "status": "q_aligned_with_guard_mid_xy",
+            "applied": False,
+            "P_mid": C_mid,
+            "Q": q3,
+            "distance_xy": d_xy,
+            "chord_len": chord_len,
+        }
+
+    if FASE4_MMQ_GUARD_ANCHOR_REQUIRE_RADIUS and chord_len > 2.0 * R + 1e-9:
+        return None, {
+            "status": "distance_gt_2S",
+            "applied": False,
+            "P_mid": C_mid,
+            "Q": q3,
+            "distance_xy": d_xy,
+            "chord_len": chord_len,
+            "sphere_radius": R,
+        }
+
+    # Coordenadas 2D en el plano vertical:
+    #   u: distancia horizontal desde P_mid hacia Q
+    #   z: altura vertical
+    A = np.array([0.0, C_mid[2]], dtype=float)
+    B = np.array([d_xy, 0.0], dtype=float)
+
+    chord = B - A
+    c = float(np.linalg.norm(chord))
+
+    if c <= 1e-10:
+        return None, {
+            "status": "degenerate_vertical_chord",
+            "applied": False,
+            "P_mid": C_mid,
+            "Q": q3,
+        }
+
+    if c > 2.0 * R + 1e-9:
+        return None, {
+            "status": "vertical_plane_distance_gt_2S",
+            "applied": False,
+            "P_mid": C_mid,
+            "Q": q3,
+            "distance_xy": d_xy,
+            "chord_len": c,
+            "sphere_radius": R,
+        }
+
+    e = chord / c
+    n = np.array([-e[1], e[0]], dtype=float)
+    mid_2d = 0.5 * (A + B)
+    h = float(np.sqrt(max(R**2 - (0.5 * c)**2, 0.0)))
+
+    center_a = mid_2d + h * n
+    center_b = mid_2d - h * n
+
+    # Centro físico superior en el plano vertical.
+    center_2d = center_a if center_a[1] >= center_b[1] else center_b
+
+    u_vals = np.linspace(0.0, d_xy, nt)
+    radicand = R**2 - (u_vals - center_2d[0])**2
+
+    if np.nanmin(radicand) < -1e-7:
+        return None, {
+            "status": "invalid_lower_branch",
+            "applied": False,
+            "P_mid": C_mid,
+            "Q": q3,
+            "center_2d": center_2d,
+            "min_radicand": float(np.nanmin(radicand)),
+        }
+
+    z_vals = center_2d[1] - np.sqrt(np.maximum(radicand, 0.0))
+    z_vals = np.maximum(z_vals, 0.0)
+
+    # Reimponer extremos exactos.
+    z_vals[0] = C_mid[2]
+    z_vals[-1] = 0.0
+
+    if len(z_vals) > 1:
+        z_vals[:-1] = np.maximum(z_vals[:-1], z_eps)
+        z_vals[-1] = 0.0
+
+    direction_xy = v_xy / d_xy
+    xy_vals = C_mid[:2][None, :] + u_vals[:, None] * direction_xy[None, :]
+
+    guide = np.column_stack([xy_vals[:, 0], xy_vals[:, 1], z_vals])
+    guide[:, 2] = np.maximum(guide[:, 2], 0.0)
+
+    # Punto intermedio de diagnóstico sobre la guía.
+    idx_mid = int(len(guide) // 2)
+    P_internal = guide[idx_mid].copy()
+
+    # Punto más bajo interno excluyendo Q. Como Q siempre toca suelo, se reporta
+    # adicionalmente un punto interno para diagnóstico visual.
+    if len(guide) > 2:
+        idx_low_internal = int(np.nanargmin(guide[:-1, 2]))
+    else:
+        idx_low_internal = idx_mid
+
+    info = {
+        "status": "ok",
+        "applied": False,
+        "P_mid_guard": C_mid,
+        "Q": q3,
+        "P_internal_mid": P_internal,
+        "P_low_internal": guide[idx_low_internal].copy(),
+        "guide_curve": guide,
+        "center_2d": center_2d,
+        "sphere_radius": R,
+        "distance_xy": d_xy,
+        "chord_len": c,
+    }
+
+    return guide, info
+
+
+def apply_mmq_guard_mid_anchor_to_patch_fase4(
+    X,
+    Y,
+    Z,
+    C,
+    q_point,
+    sphere_radius,
+    strength=FASE4_MMQ_GUARD_MID_ANCHOR_STRENGTH,
+    lateral_power=FASE4_MMQ_GUARD_MID_ANCHOR_LATERAL_POWER,
+    vertical_power=FASE4_MMQ_GUARD_MID_ANCHOR_VERTICAL_POWER,
+    z_eps=1e-8
+):
+    """
+    Ajusta SOLO el interior de un parche M-M-Q con guarda directa usando
+    una curva guía central P_mid-Q.
+
+    Las fronteras se reimponen exactamente en build_mmq_patch_from_boundaries:
+      - fila 0     : cable/guarda superior C;
+      - columna 0  : curva M1-Q;
+      - columna -1 : curva M2-Q;
+      - fila -1    : Q.
+
+    Corrección:
+      - guide_z tiene forma (nt, 1), porque la guía depende de t.
+      - w puede quedar como (nt, ns) por broadcasting lateral*vertical.
+      - Para indexar con máscara booleana, todos deben tener exactamente
+        la misma forma que Z. Por eso se expanden explícitamente a (nt, ns).
+    """
+    if not ENABLE_FASE4_MMQ_GUARD_MID_ANCHOR:
+        return Z, {
+            "status": "disabled",
+            "applied": False,
+        }
+
+    guide, info = build_mmq_guard_mid_anchor_curve_fase4(
+        C=C,
+        q_point=q_point,
+        sphere_radius=sphere_radius,
+        nt=Z.shape[0],
+        z_eps=z_eps
+    )
+
+    if guide is None or info.get("status") != "ok":
+        return Z, info
+
+    Z_new = np.asarray(Z, dtype=float).copy()
+    nt, ns = Z_new.shape
+
+    s_values = np.linspace(0.0, 1.0, ns)[None, :]
+    t_values = np.linspace(0.0, 1.0, nt)[:, None]
+
+    # Peso lateral: 0 en los lados, 1 en el centro s=0.5.
+    lateral = 4.0 * s_values * (1.0 - s_values)
+    lateral = np.clip(lateral, 0.0, 1.0)
+    lateral = np.power(lateral, lateral_power)
+
+    # Peso vertical: 0 en la guarda superior y 0 en Q.
+    vertical = 4.0 * t_values * (1.0 - t_values)
+    vertical = np.clip(vertical, 0.0, 1.0)
+    vertical = np.power(vertical, vertical_power)
+
+    # Broadcasting explícito para evitar errores de indexación booleana.
+    w = strength * lateral * vertical
+    w = np.clip(w, 0.0, 1.0)
+    w = np.broadcast_to(w, Z_new.shape).copy()
+
+    guide_z = np.asarray(guide[:, 2], dtype=float)[:, None]
+    guide_z = np.broadcast_to(guide_z, Z_new.shape).copy()
+
+    mask = (
+        np.isfinite(Z_new)
+        & np.isfinite(guide_z)
+        & np.isfinite(w)
+    )
+
+    Z_new[mask] = (
+        (1.0 - w[mask]) * Z_new[mask]
+        + w[mask] * guide_z[mask]
+    )
+
+    Z_new = np.maximum(Z_new, 0.0)
+
+    info["applied"] = True
+    info["strength"] = float(strength)
+    info["lateral_power"] = float(lateral_power)
+    info["vertical_power"] = float(vertical_power)
+
+    return Z_new, info
+
 def build_mmq_guard_patch(C, L, R, q_point, ns, nt, z_eps=1e-8):
     """
     Caso con cable de guarda directo:
     usa Coons triangular porque el borde superior es recto.
+
+    Esta función conserva el comportamiento base. La guía interna P_mid-Q
+    se aplica afuera, desde build_mmq_patch_from_boundaries, para mantener
+    la firma original de esta función.
     """
     X = np.zeros((nt, ns))
     Y = np.zeros((nt, ns))
@@ -28994,7 +29284,7 @@ def build_mmq_crest_patch_from_scratch(C, L, R, q_point, ns, nt, z_eps=1e-8):
     """
     Caso con cresta:
     superficie reconstruida desde cero usando la frontera superior
-    que viene del registro final post-FASE 3C.
+    que viene del registro final post-FASE 3B.
 
     Mantiene:
       - recorte superior solo en Z contra la cresta;
@@ -29153,7 +29443,7 @@ def mask_mmq_patch_to_boundary_xy(
 
     # Mantener fronteras exactas aunque Path las marque como fuera.
     if keep_boundaries:
-        inside[0, :] = True       # cresta C
+        inside[0, :] = True       # frontera superior C
         inside[:, 0] = True       # lado L
         inside[:, -1] = True      # lado R
         inside[-1, :] = True      # Q
@@ -29186,11 +29476,12 @@ def build_mmq_patch_from_boundaries(
     z_eps=1e-8,
     apply_xy_mask=True,
     xy_mask_radius=1e-9,
-    xy_mask_verbose=False
+    xy_mask_verbose=False,
+    return_anchor_info=False
 ):
     """
     Construye parche M-M-Q usando la frontera superior del registro final
-    post-FASE 3C.
+    post-FASE 3B.
 
     IMPORTANTE:
     - No recalcula circle_crest_between_two_masts.
@@ -29200,6 +29491,12 @@ def build_mmq_patch_from_boundaries(
     Recorte:
     - El recorte en Z se aplica dentro de build_mmq_crest_patch_from_scratch.
     - El recorte en XY se aplica como máscara, sin mover puntos.
+
+    Ancla interna:
+    - Solo si top_name == "guard_wire".
+    - Se crea una guía P_mid-Q con radio S y se mezcla suavemente en Z.
+    - La salida por defecto conserva el formato anterior de 9 elementos.
+    - Si return_anchor_info=True, se agrega anchor_info como elemento 10.
     """
     C, top_name, top_kind, source = get_top_boundary_from_registry(
         m1=m1,
@@ -29246,6 +29543,15 @@ def build_mmq_patch_from_boundaries(
 
     q_point = np.array([q["x"], q["y"], 0.0], dtype=float)
 
+    anchor_info = {
+        "status": "not_applicable",
+        "applied": False,
+        "reason": "top_boundary_not_guard_wire",
+        "source": source,
+        "top_name": top_name,
+        "triangle": f"{m1['label']}-{m2['label']}-{q['label']}",
+    }
+
     if top_name == "guard_wire":
         X, Y, Z = build_mmq_guard_patch(
             C=C,
@@ -29256,6 +29562,40 @@ def build_mmq_patch_from_boundaries(
             nt=nt,
             z_eps=z_eps
         )
+
+        Z, anchor_info = apply_mmq_guard_mid_anchor_to_patch_fase4(
+            X=X,
+            Y=Y,
+            Z=Z,
+            C=C,
+            q_point=q_point,
+            sphere_radius=sphere_radius,
+            z_eps=z_eps
+        )
+
+        anchor_info["source"] = source
+        anchor_info["top_name"] = top_name
+        anchor_info["triangle"] = f"{m1['label']}-{m2['label']}-{q['label']}"
+
+        # Reimponer fronteras exactas después del ajuste.
+        X[0, :] = C[:, 0]
+        Y[0, :] = C[:, 1]
+        Z[0, :] = C[:, 2]
+
+        X[:, 0] = L[:, 0]
+        Y[:, 0] = L[:, 1]
+        Z[:, 0] = L[:, 2]
+
+        X[:, -1] = R[:, 0]
+        Y[:, -1] = R[:, 1]
+        Z[:, -1] = R[:, 2]
+
+        X[-1, :] = q_point[0]
+        Y[-1, :] = q_point[1]
+        Z[-1, :] = 0.0
+
+        Z = np.maximum(Z, 0.0)
+
     else:
         X, Y, Z = build_mmq_crest_patch_from_scratch(
             C=C,
@@ -29287,7 +29627,12 @@ def build_mmq_patch_from_boundaries(
             verbose=xy_mask_verbose
         )
 
-    return X, Y, Z, C, L, R, top_name, top_kind, source
+    out = (X, Y, Z, C, L, R, top_name, top_kind, source)
+
+    if return_anchor_info:
+        return out + (anchor_info,)
+
+    return out
 
 
 # =========================================================
@@ -29440,13 +29785,26 @@ def add_mmq_case_to_subplot(
         flatten_power=flatten_power,
         apply_xy_mask=apply_xy_mask,
         xy_mask_radius=xy_mask_radius,
-        xy_mask_verbose=xy_mask_verbose
+        xy_mask_verbose=xy_mask_verbose,
+        return_anchor_info=True
     )
 
     if patch is None:
         return False
 
-    X, Y, Z, C, L, R, top_name, top_kind, source = patch
+    X, Y, Z, C, L, R, top_name, top_kind, source, anchor_info = patch
+
+    # Guardar diagnóstico global.
+    fase4_mmq_guard_anchor_debug_rows.append({
+        "triangle": f"{m1['label']}-{m2['label']}-{q['label']}",
+        "top_name": top_name,
+        "top_kind": top_kind,
+        "source": source,
+        "anchor_status": anchor_info.get("status"),
+        "anchor_applied": bool(anchor_info.get("applied", False)),
+        "anchor_distance_xy": anchor_info.get("distance_xy"),
+        "anchor_chord_len": anchor_info.get("chord_len"),
+    })
 
     if top_name == "guard_wire":
         label_top = "Cable de guarda"
@@ -29504,6 +29862,65 @@ def add_mmq_case_to_subplot(
         row=row,
         col=col
     )
+
+    # Guía interna P_mid-Q para diagnóstico visual.
+    if (
+        top_name == "guard_wire"
+        and FASE4_SHOW_MMQ_GUARD_MID_ANCHOR_GUIDE
+        and isinstance(anchor_info, dict)
+        and anchor_info.get("guide_curve", None) is not None
+    ):
+        G = np.asarray(anchor_info["guide_curve"], dtype=float)
+
+        fig.add_trace(
+            go.Scatter3d(
+                x=G[:, 0],
+                y=G[:, 1],
+                z=G[:, 2],
+                mode="lines",
+                line=dict(width=8, dash="dot"),
+                name=f"Guía interna P_mid-Q {m1['label']}-{m2['label']}-{q['label']}"
+            ),
+            row=row,
+            col=col
+        )
+
+    if (
+        top_name == "guard_wire"
+        and FASE4_SHOW_MMQ_GUARD_MID_ANCHOR_POINTS
+        and isinstance(anchor_info, dict)
+        and anchor_info.get("P_mid_guard", None) is not None
+    ):
+        points_to_plot = []
+        text_to_plot = []
+
+        P_mid = anchor_info.get("P_mid_guard")
+        P_internal = anchor_info.get("P_internal_mid")
+
+        if P_mid is not None:
+            points_to_plot.append(np.asarray(P_mid, dtype=float))
+            text_to_plot.append("P_mid guarda")
+
+        if P_internal is not None:
+            points_to_plot.append(np.asarray(P_internal, dtype=float))
+            text_to_plot.append("P_anchor MMQ")
+
+        if points_to_plot:
+            Pp = np.asarray(points_to_plot, dtype=float)
+            fig.add_trace(
+                go.Scatter3d(
+                    x=Pp[:, 0],
+                    y=Pp[:, 1],
+                    z=Pp[:, 2],
+                    mode="markers+text",
+                    marker=dict(size=7, symbol="diamond"),
+                    text=text_to_plot,
+                    textposition="top center",
+                    name=f"Puntos ancla MMQ guarda {q['label']}"
+                ),
+                row=row,
+                col=col
+            )
 
     if show_internal_mesh:
         for r in np.linspace(0, X.shape[0] - 1, 8, dtype=int):
@@ -29606,12 +30023,15 @@ def plot_mmq_guard_vs_crest_prototype(
     xy_mask_verbose=False
 ):
     """
-    Prototipo comparativo M-M-Q conectado con el registro final post-FASE 3C.
+    Prototipo comparativo M-M-Q conectado con el registro final post-FASE 3B.
 
     Compara:
       - un M-M-Q cuyo borde superior sea cable directo;
       - un M-M-Q cuyo borde superior sea cualquier cresta registrada activa.
     """
+    global fase4_mmq_guard_anchor_debug_rows
+    fase4_mmq_guard_anchor_debug_rows = []
+
     if registry_result is None:
         raise ValueError(
             "Debes pasar registry_result=resultado_crestas_final "
@@ -29676,7 +30096,10 @@ def plot_mmq_guard_vs_crest_prototype(
             print(f"No se pudo construir el caso: {title} | índice {idx}")
 
     fig.update_layout(
-        title="FASE 4: comparación prototipo M-M-Q usando fronteras finales post-FASE 3B",
+        title=(
+            "FASE 4: comparación prototipo M-M-Q usando fronteras finales post-FASE 3B "
+            "+ guía interna P_mid-Q para guardas"
+        ),
         height=900,
         showlegend=True
     )
@@ -29699,6 +30122,18 @@ def plot_mmq_guard_vs_crest_prototype(
     print("Caso con cresta registrada:", "encontrado" if tri_crest is not None else "NO encontrado")
     print("Índice M-M-Q con cresta:", idx_crest)
     print("Máscara XY aplicada:", apply_xy_mask)
+    print("Ancla interna P_mid-Q habilitada:", ENABLE_FASE4_MMQ_GUARD_MID_ANCHOR)
+
+    if fase4_mmq_guard_anchor_debug_rows:
+        print("")
+        print("Diagnóstico ancla interna MMQ con guarda:")
+        for row in fase4_mmq_guard_anchor_debug_rows:
+            print(
+                f"  {row['triangle']} | top={row['top_name']} | "
+                f"source={row['source']} | status={row['anchor_status']} | "
+                f"applied={row['anchor_applied']}"
+            )
+
     print("=========================================================")
 
     fig.show()
@@ -29721,17 +30156,13 @@ fig_16 = plot_mmq_guard_vs_crest_prototype(
     xy_mask_verbose=False
 )
 
-"""Esta celda genera la visualización 3D completa incorporando el relleno de superficies M-M-Q.
-
-El código recorre todos los triángulos conservados y selecciona únicamente los de tipo M-M-Q. Para cada uno, toma sus dos mástiles y su punto Q, construye el parche mediante build_mmq_patch_from_boundaries, y lo agrega a la figura como una superficie 3D. Esta función permite que la frontera superior sea un cable de guarda directo, una cresta base o una cresta especial generada por los casos de guardas.
-
-Finalmente, la celda grafica en conjunto las superficies de mástil solo, las aristas rojas hacia puntos Q, los rellenos M-M-Q, las crestas/cables finales, los segmentos M-Q, los puntos Q activos y el plano base z = 0. También imprime cuántos parches M-M-Q fueron generados correctamente y cuántos fueron omitidos.
-"""
+"""# FASE 4B: Visualización final con relleno de superficies M-M-Q"""
 
 # @title
 # =========================================================
 # FASE 4B — VISUALIZACIÓN FINAL CON RELLENO DE SUPERFICIES M-M-Q
 # USANDO FRONTERAS FINALES POST-FASE 3B
+# + COMPATIBILIDAD CON ANCLA INTERNA MMQ EN GUARDAS
 # =========================================================
 #
 # Objetivo:
@@ -30318,6 +30749,69 @@ def local_trace_color_by_triangle_type_fase4B(tri_type):
     return "rgba(120,120,120,0.80)"
 
 
+
+def local_unpack_mmq_patch_fase4B(patch):
+    """
+    Desempaqueta la salida de build_mmq_patch_from_boundaries.
+
+    Compatibilidad:
+      - Formato anterior: 9 elementos
+        X, Y, Z, C, L, R, top_name, top_kind, source
+
+      - Formato nuevo de FASE 4 con ancla MMQ en guarda: 10 elementos
+        X, Y, Z, C, L, R, top_name, top_kind, source, anchor_info
+
+      - Formato dict, si alguna versión posterior lo usa.
+    """
+    if patch is None:
+        return None
+
+    if isinstance(patch, dict):
+        required = ["X", "Y", "Z", "C", "L", "R", "top_name", "top_kind", "source"]
+
+        if not all(k in patch for k in required):
+            return None
+
+        return {
+            "X": patch["X"],
+            "Y": patch["Y"],
+            "Z": patch["Z"],
+            "C": patch["C"],
+            "L": patch["L"],
+            "R": patch["R"],
+            "top_name": patch["top_name"],
+            "top_kind": patch["top_kind"],
+            "source": patch["source"],
+            "anchor_info": patch.get("anchor_info", {}),
+        }
+
+    if isinstance(patch, (list, tuple)):
+        if len(patch) < 9:
+            return None
+
+        X, Y, Z, C, L, R, top_name, top_kind, source = patch[:9]
+
+        if len(patch) >= 10 and isinstance(patch[9], dict):
+            anchor_info = patch[9]
+        else:
+            anchor_info = {}
+
+        return {
+            "X": X,
+            "Y": Y,
+            "Z": Z,
+            "C": C,
+            "L": L,
+            "R": R,
+            "top_name": top_name,
+            "top_kind": top_kind,
+            "source": source,
+            "anchor_info": anchor_info,
+        }
+
+    return None
+
+
 # =========================================================
 # 2) RESPALDO LOCAL PARA DIBUJAR CRESTAS / TRIÁNGULOS / M-Q / Q / N
 # =========================================================
@@ -30690,8 +31184,11 @@ def add_all_mmq_patches_to_fig(
     count_ok = 0
     count_fail = 0
     count_skip_not_mmq = 0
+    count_guard_anchor_applied = 0
+    count_guard_anchor_available = 0
 
     failed_records = []
+    guard_anchor_records = []
 
     for k, tri in enumerate(triangles):
 
@@ -30736,21 +31233,37 @@ def add_all_mmq_patches_to_fig(
                 flatten_power=flatten_power,
                 apply_xy_mask=apply_xy_mask,
                 xy_mask_radius=xy_mask_radius,
-                xy_mask_verbose=False
+                xy_mask_verbose=False,
+                return_anchor_info=True
             )
         except TypeError:
-            patch = fn_build_mmq(
-                m1=m1,
-                m2=m2,
-                q=q,
-                sphere_radius=sphere_radius,
-                registry_result=registry_result,
-                ns=ns,
-                nt=nt,
-                flatten_power=flatten_power,
-                apply_xy_mask=apply_xy_mask,
-                xy_mask_radius=xy_mask_radius
-            )
+            try:
+                patch = fn_build_mmq(
+                    m1=m1,
+                    m2=m2,
+                    q=q,
+                    sphere_radius=sphere_radius,
+                    registry_result=registry_result,
+                    ns=ns,
+                    nt=nt,
+                    flatten_power=flatten_power,
+                    apply_xy_mask=apply_xy_mask,
+                    xy_mask_radius=xy_mask_radius,
+                    xy_mask_verbose=False
+                )
+            except TypeError:
+                patch = fn_build_mmq(
+                    m1=m1,
+                    m2=m2,
+                    q=q,
+                    sphere_radius=sphere_radius,
+                    registry_result=registry_result,
+                    ns=ns,
+                    nt=nt,
+                    flatten_power=flatten_power,
+                    apply_xy_mask=apply_xy_mask,
+                    xy_mask_radius=xy_mask_radius
+                )
 
         if patch is None:
             count_fail += 1
@@ -30765,11 +31278,9 @@ def add_all_mmq_patches_to_fig(
             })
             continue
 
-        # FASE 4 conectada retorna normalmente:
-        # X, Y, Z, C, L, R, top_name, top_kind, source
-        try:
-            X, Y, Z, C, L, R, top_name, top_kind, source = patch
-        except ValueError:
+        unpacked = local_unpack_mmq_patch_fase4B(patch)
+
+        if unpacked is None:
             count_fail += 1
             failed_records.append({
                 "triangle_index": k,
@@ -30782,7 +31293,40 @@ def add_all_mmq_patches_to_fig(
             })
             continue
 
+        X = unpacked["X"]
+        Y = unpacked["Y"]
+        Z = unpacked["Z"]
+        C = unpacked["C"]
+        L = unpacked["L"]
+        R = unpacked["R"]
+        top_name = unpacked["top_name"]
+        top_kind = unpacked["top_kind"]
+        source = unpacked["source"]
+        anchor_info = unpacked.get("anchor_info", {}) or {}
+
         Z = np.maximum(Z, 0.0)
+
+        anchor_status = anchor_info.get("status", "no_info")
+        anchor_applied = bool(anchor_info.get("applied", False))
+
+        if anchor_info:
+            count_guard_anchor_available += 1
+            guard_anchor_records.append({
+                "triangle_index": k,
+                "triangle": (
+                    f"{local_node_label_fase4B(m1)}-"
+                    f"{local_node_label_fase4B(m2)}-"
+                    f"{local_node_label_fase4B(q)}"
+                ),
+                "status": anchor_status,
+                "applied": anchor_applied,
+                "source": source,
+                "distance_xy": anchor_info.get("distance_xy", None),
+                "chord_len": anchor_info.get("chord_len", None),
+            })
+
+        if anchor_applied:
+            count_guard_anchor_applied += 1
 
         if str(top_name) == "guard_wire":
             label_top = "Cable/fragmento de guarda"
@@ -30809,11 +31353,47 @@ def add_all_mmq_patches_to_fig(
                 f"Borde superior: {label_top}<br>"
                 f"source={source}<br>"
                 f"flatten_power={flatten_power}<br>"
+                f"Ancla MMQ guarda aplicada: {anchor_applied}<br>"
+                f"Estado ancla: {anchor_status}<br>"
                 "x=%{x:.2f}<br>"
                 "y=%{y:.2f}<br>"
                 "z=%{z:.2f}<extra></extra>"
             )
         ))
+
+        # Guía interna P_mid-Q — oculta en la vista limpia (FASE4_SHOW_MMQ_GUARD_MID_ANCHOR_GUIDE)
+        if (
+            FASE4_SHOW_MMQ_GUARD_MID_ANCHOR_GUIDE
+            and anchor_applied
+            and isinstance(anchor_info, dict)
+            and anchor_info.get("guide_curve", None) is not None
+        ):
+            G = np.asarray(anchor_info["guide_curve"], dtype=float)
+
+            if G.ndim == 2 and G.shape[1] >= 3 and len(G) >= 2:
+                fig.add_trace(go.Scatter3d(
+                    x=G[:, 0],
+                    y=G[:, 1],
+                    z=G[:, 2],
+                    mode="lines",
+                    line=dict(width=5, dash="dot"),
+                    name=(
+                        "Guía interna MMQ guarda "
+                        f"{local_node_label_fase4B(m1)}-"
+                        f"{local_node_label_fase4B(m2)}-"
+                        f"{local_node_label_fase4B(q)}"
+                    ),
+                    showlegend=False,
+                    hovertemplate=(
+                        "Guía interna P_mid-Q<br>"
+                        f"{local_node_label_fase4B(m1)}-"
+                        f"{local_node_label_fase4B(m2)}-"
+                        f"{local_node_label_fase4B(q)}<br>"
+                        "x=%{x:.2f}<br>"
+                        "y=%{y:.2f}<br>"
+                        "z=%{z:.2f}<extra></extra>"
+                    )
+                ))
 
         count_ok += 1
 
@@ -30824,9 +31404,14 @@ def add_all_mmq_patches_to_fig(
     print(f"Triángulos no M-M-Q ignorados        : {count_skip_not_mmq}")
     print(f"Parches M-M-Q generados correctamente: {count_ok}")
     print(f"Parches M-M-Q omitidos/no aplicables : {count_fail}")
+    print(f"Parches con info de ancla MMQ guarda : {count_guard_anchor_available}")
+    print(f"Parches con ancla MMQ guarda aplicada: {count_guard_anchor_applied}")
     print(f"flatten_power usado en M-M-Q         : {flatten_power}")
     print(f"Máscara XY aplicada                  : {apply_xy_mask}")
     print("=========================================================")
+
+    if len(guard_anchor_records) > 0:
+        globals()["fase4B_mmq_guard_anchor_records"] = guard_anchor_records
 
     if len(failed_records) > 0:
         print("\nM-M-Q no construidos:")
@@ -31029,6 +31614,7 @@ def plot_single_mast_surfaces_with_crests_mq_and_mmq_fill(
         title=(
             "FASE 4B: superficies de mástil solo + relleno M-M-Q "
             "con fronteras finales post-FASE 3B "
+            "+ ancla MMQ en guardas "
             f"| flatten_power={flatten_power}"
         ),
         scene=dict(
@@ -32217,13 +32803,409 @@ def list_mmm_examples_by_source(triangles, registry_result=None, max_items=None)
 # 8) CONSTRUCCIÓN DEL PARCHE M-like NORMAL
 # =========================================================
 
+
+# =========================================================
+# 8A) ANCLA FÍSICA DE ESFERA EN TRES SOPORTES M-LIKE
+# PARA PARCHE M-M-M NORMAL Y M-M-N SIN SEGMENTOS DE GUARDA
+# =========================================================
+#
+# Objetivo:
+#   En el caso M-M-M común, donde las tres fronteras son crestas base
+#   normales entre mástiles reales, se calcula adicionalmente la esfera de
+#   radio S apoyada físicamente en las tres puntas superiores de los mástiles.
+#
+#   También se permite el mismo ajuste para superficies M-M-N, pero SOLO si
+#   ninguna de sus tres aristas corresponde a un segmento/cable de guarda
+#   directo o fragmentado. Es decir, se excluyen fronteras con fuente:
+#
+#       - direct_guard_wire
+#       - direct_guard_wire_segment_MN
+#       - direct_guard_wire_fragment_NN
+#       - direct_guard_wire_fragment
+#
+#   Para M-M-N, la esfera se apoya en los tres puntos M-like de la superficie:
+#   dos puntas de mástil y el punto N auxiliar. Esto permite usar el punto bajo
+#   físico de la esfera como referencia de interpolación siempre que el parche
+#   no esté siendo delimitado por un segmento real de guarda.
+#
+#   A partir de esa esfera se obtiene:
+#       - centro de la esfera;
+#       - punto más bajo de la barriga de la esfera P_belly = centro - [0, 0, S];
+#       - verificación de si P_belly cae dentro del triángulo en planta XY.
+#
+#   Si el caso es válido, el parche interpolado se ajusta suavemente hacia la
+#   superficie inferior real de esa esfera, pero con peso nulo en las fronteras.
+#   Por tanto, las tres crestas C12, C13 y C23 se conservan exactamente.
+#
+# Qué NO toca:
+#   - M-M-N con cualquier arista que sea segmento/cable de guarda;
+#   - N-N-M;
+#   - subtetras con punto I;
+#   - cables de guarda directos o fragmentados;
+#   - crest_registry_final;
+#   - triangles_final_3B.
+# =========================================================
+
+ENABLE_THREE_MAST_PHYSICAL_SPHERE_ANCHOR_18 = True
+THREE_MAST_SPHERE_ANCHOR_STRENGTH_18 = 0.85
+THREE_MAST_APPLY_ONLY_IF_BELLY_INSIDE_XY_18 = True
+THREE_MAST_SPHERE_BOUNDARY_POWER_18 = 0.85
+
+# Alias semántico: se mantiene el nombre anterior de las constantes para no
+# romper compatibilidad, pero ahora la ancla puede aplicarse a tres soportes
+# M-like: M-M-M normal o M-M-N sin segmentos de guarda.
+ENABLE_MLIKE_PHYSICAL_SPHERE_ANCHOR_18 = ENABLE_THREE_MAST_PHYSICAL_SPHERE_ANCHOR_18
+
+
+def _cross2d_local_18(u, v):
+    u = np.asarray(u, dtype=float)
+    v = np.asarray(v, dtype=float)
+    return float(u[0] * v[1] - u[1] * v[0])
+
+
+def barycentric_xy_18(Pxy, Axy, Bxy, Cxy, tol=1e-9):
+    Pxy = np.asarray(Pxy, dtype=float)
+    Axy = np.asarray(Axy, dtype=float)
+    Bxy = np.asarray(Bxy, dtype=float)
+    Cxy = np.asarray(Cxy, dtype=float)
+
+    v0 = Bxy - Axy
+    v1 = Cxy - Axy
+    v2 = Pxy - Axy
+
+    den = _cross2d_local_18(v0, v1)
+
+    if abs(den) <= tol:
+        return None
+
+    l2 = _cross2d_local_18(v2, v1) / den
+    l3 = _cross2d_local_18(v0, v2) / den
+    l1 = 1.0 - l2 - l3
+
+    return np.array([l1, l2, l3], dtype=float)
+
+
+def point_inside_triangle_xy_18(Pxy, Axy, Bxy, Cxy, tol=1e-6):
+    bary = barycentric_xy_18(Pxy, Axy, Bxy, Cxy)
+
+    if bary is None:
+        return False, None
+
+    inside = np.all(bary >= -tol) and np.all(bary <= 1.0 + tol)
+
+    return bool(inside), bary
+
+
+def is_mlike_sphere_support_node_18(node):
+    """
+    Nodo permitido como soporte de la esfera física de relleno:
+      - M real;
+      - N auxiliar.
+
+    No se permiten Q, I ni L para esta ancla, porque esos puntos pertenecen a
+    otros mecanismos de relleno/verificación.
+    """
+    return is_real_mast_node_18(node) or is_auxiliary_N_node_18(node)
+
+
+def is_guard_segment_source_for_mlike_anchor_18(source):
+    """
+    Fuente considerada segmento/cable de guarda para bloquear la ancla física
+    en M-M-N.
+    """
+    return source in DIRECT_GUARD_BOUNDARY_SOURCES_18
+
+
+def classify_mlike_sphere_anchor_case_18(m1, m2, m3, source12, source13, source23):
+    """
+    Decide si se permite calcular/aplicar la esfera física de apoyo.
+
+    Reglas:
+      1) M-M-M normal:
+           - los tres nodos son mástiles reales;
+           - las tres fronteras son base_normal_L_le_2S.
+
+      2) M-M-N protegido:
+           - dos nodos son M y uno es N;
+           - ninguna frontera es segmento/cable de guarda directo o fragmentado.
+
+    En ambos casos se excluyen puntos I/L/Q y se conserva la interpolación
+    exacta de las fronteras.
+    """
+    nodes = [m1, m2, m3]
+    sources = [source12, source13, source23]
+
+    n_mast = sum(is_real_mast_node_18(n) for n in nodes)
+    n_auxN = sum(is_auxiliary_N_node_18(n) for n in nodes)
+    n_I = sum(is_intersection_I_node_18(n) for n in nodes)
+    n_L = sum(is_low_L_node_18(n) for n in nodes)
+    n_q = sum(str(n.get("type", "")) == "Q" for n in nodes)
+
+    has_only_supported_nodes = all(is_mlike_sphere_support_node_18(n) for n in nodes)
+    has_guard_segment_edge = any(is_guard_segment_source_for_mlike_anchor_18(src) for src in sources)
+
+    info = {
+        "apply_candidate": False,
+        "case": "not_applicable",
+        "reason": "No coincide con M-M-M normal ni con M-M-N sin segmentos de guarda.",
+        "n_mast": int(n_mast),
+        "n_auxN": int(n_auxN),
+        "sources": list(sources),
+        "has_guard_segment_edge": bool(has_guard_segment_edge),
+    }
+
+    if not has_only_supported_nodes or n_I > 0 or n_L > 0 or n_q > 0:
+        info["reason"] = "La superficie contiene nodos no permitidos para esta ancla física."
+        return info
+
+    is_common_real_MMM_case = (
+        n_mast == 3
+        and n_auxN == 0
+        and source12 == "base_normal_L_le_2S"
+        and source13 == "base_normal_L_le_2S"
+        and source23 == "base_normal_L_le_2S"
+    )
+
+    if is_common_real_MMM_case:
+        info.update({
+            "apply_candidate": True,
+            "case": "M-M-M_normal_base_crests",
+            "reason": "M-M-M real con tres crestas base normales.",
+        })
+        return info
+
+    is_MMN_without_guard_segments = (
+        n_mast == 2
+        and n_auxN == 1
+        and not has_guard_segment_edge
+    )
+
+    if is_MMN_without_guard_segments:
+        info.update({
+            "apply_candidate": True,
+            "case": "M-M-N_without_guard_segment_edges",
+            "reason": "M-M-N con ninguna arista como segmento/cable de guarda.",
+        })
+        return info
+
+    if n_mast == 2 and n_auxN == 1 and has_guard_segment_edge:
+        info["reason"] = "M-M-N excluido porque al menos una arista es segmento/cable de guarda."
+
+    return info
+
+
+def compute_three_mast_support_sphere_belly_18(
+    m1,
+    m2,
+    m3,
+    sphere_radius,
+    clamp_z_nonnegative=True
+):
+    """
+    Calcula la esfera de radio S que pasa por tres soportes M-like.
+
+    En M-M-M los soportes son tres puntas de mástil.
+    En M-M-N los soportes son dos puntas de mástil y un punto N auxiliar.
+
+    Retorna el centro físico superior y el punto más bajo de la esfera:
+        P_belly = centro - [0, 0, S]
+    """
+    if not all(is_mlike_sphere_support_node_18(m) for m in [m1, m2, m3]):
+        return {
+            "status": "not_supported_MLIKE_supports",
+            "applied": False,
+        }
+
+    R = float(sphere_radius)
+
+    P1 = local_node_point(m1)
+    P2 = local_node_point(m2)
+    P3 = local_node_point(m3)
+
+    v12 = P2 - P1
+    d12 = float(np.linalg.norm(v12))
+
+    if d12 <= 1e-9:
+        return {
+            "status": "degenerate_edge",
+            "applied": False,
+        }
+
+    e1 = v12 / d12
+
+    v13 = P3 - P1
+    i = float(np.dot(e1, v13))
+
+    temp = v13 - i * e1
+    j = float(np.linalg.norm(temp))
+
+    if j <= 1e-9:
+        return {
+            "status": "collinear_supports",
+            "applied": False,
+        }
+
+    e2 = temp / j
+    e3 = np.cross(e1, e2)
+
+    e3_norm = float(np.linalg.norm(e3))
+
+    if e3_norm <= 1e-9:
+        return {
+            "status": "invalid_plane_normal",
+            "applied": False,
+        }
+
+    e3 = e3 / e3_norm
+
+    # Circuncentro del triángulo formado por los tres soportes,
+    # expresado en el plano local definido por P1, P2 y P3.
+    x_c = d12 / 2.0
+    y_c = (i**2 + j**2 - d12 * i) / (2.0 * j)
+
+    circumcenter = P1 + x_c * e1 + y_c * e2
+    circumradius_sq = x_c**2 + y_c**2
+
+    if circumradius_sq > R**2 + 1e-8:
+        return {
+            "status": "sphere_radius_too_small",
+            "applied": False,
+            "circumradius": float(np.sqrt(circumradius_sq)),
+            "sphere_radius": R,
+        }
+
+    h = float(np.sqrt(max(R**2 - circumradius_sq, 0.0)))
+
+    center_a = circumcenter + h * e3
+    center_b = circumcenter - h * e3
+
+    # Centro físico para el método de la esfera rodante:
+    # se elige el centro con mayor coordenada Z.
+    center = center_a if center_a[2] >= center_b[2] else center_b
+
+    belly_raw = center - np.array([0.0, 0.0, R], dtype=float)
+    belly = belly_raw.copy()
+
+    if clamp_z_nonnegative:
+        belly[2] = max(belly[2], 0.0)
+
+    Axy = P1[:2]
+    Bxy = P2[:2]
+    Cxy = P3[:2]
+
+    inside_xy, bary = point_inside_triangle_xy_18(
+        belly[:2],
+        Axy,
+        Bxy,
+        Cxy
+    )
+
+    return {
+        "status": "ok",
+        "applied": False,
+        "support_labels": [m1["label"], m2["label"], m3["label"]],
+        "support_types": [str(m.get("type", "")) for m in [m1, m2, m3]],
+        "sphere_radius": R,
+        "center": center,
+        "circumcenter": circumcenter,
+        "circumradius": float(np.sqrt(circumradius_sq)),
+        "belly_point": belly,
+        "belly_point_raw": belly_raw,
+        "belly_inside_xy": inside_xy,
+        "belly_barycentric_xy": bary,
+    }
+
+
+def lower_sphere_z_from_anchor_18(X, Y, sphere_anchor):
+    C = np.asarray(sphere_anchor["center"], dtype=float)
+    R = float(sphere_anchor["sphere_radius"])
+
+    rho2 = (X - C[0])**2 + (Y - C[1])**2
+
+    Zs = np.full_like(X, np.nan, dtype=float)
+    valid = rho2 <= R**2 + 1e-8
+
+    Zs[valid] = C[2] - np.sqrt(np.maximum(R**2 - rho2[valid], 0.0))
+
+    return Zs
+
+
+def apply_three_mast_sphere_anchor_to_patch_18(
+    X,
+    Y,
+    Z,
+    sphere_anchor,
+    strength=THREE_MAST_SPHERE_ANCHOR_STRENGTH_18,
+    boundary_power=THREE_MAST_SPHERE_BOUNDARY_POWER_18
+):
+    """
+    Ajusta suavemente el parche hacia la superficie inferior de la esfera
+    apoyada en tres soportes M-like.
+
+    El peso interno se anula en las tres fronteras. Por eso C12, C13 y C23
+    se conservan exactamente.
+    """
+    if sphere_anchor is None:
+        return Z
+
+    if sphere_anchor.get("status") != "ok":
+        return Z
+
+    if (
+        THREE_MAST_APPLY_ONLY_IF_BELLY_INSIDE_XY_18
+        and not sphere_anchor.get("belly_inside_xy", False)
+    ):
+        return Z
+
+    nt, ns = Z.shape
+
+    s_values = np.linspace(0.0, 1.0, ns)[None, :]
+    t_values = np.linspace(0.0, 1.0, nt)[:, None]
+
+    # Coordenadas naturales del parche triangular:
+    #   t = 0  -> frontera C12
+    #   s = 0  -> frontera C13
+    #   s = 1  -> frontera C23
+    lam1 = (1.0 - s_values) * (1.0 - t_values)
+    lam2 = s_values * (1.0 - t_values)
+    lam3 = t_values
+
+    # Burbuja interior:
+    #   - vale 0 en las tres fronteras;
+    #   - se acerca a 1 hacia el interior.
+    bubble = 27.0 * lam1 * lam2 * lam3
+    bubble = np.clip(bubble, 0.0, 1.0)
+    bubble = np.power(bubble, boundary_power)
+
+    Z_sphere = lower_sphere_z_from_anchor_18(X, Y, sphere_anchor)
+
+    mask = np.isfinite(Z_sphere) & np.isfinite(Z)
+
+    Z_new = Z.copy()
+
+    w = strength * bubble
+    w = np.clip(w, 0.0, 1.0)
+
+    Z_new[mask] = (
+        (1.0 - w[mask]) * Z[mask]
+        + w[mask] * Z_sphere[mask]
+    )
+
+    Z_new = np.maximum(Z_new, 0.0)
+
+    sphere_anchor["applied"] = True
+
+    return Z_new
+
 def build_mmm_patch_from_boundaries(
     C12,
     C13,
     C23,
     ns=90,
     nt=90,
-    preserve_nonnegative=True
+    preserve_nonnegative=True,
+    sphere_anchor_3mast=None,
+    apply_sphere_anchor=True
 ):
     C12 = local_resample_curve_xyz(np.asarray(C12, dtype=float), ns)
     C13 = local_resample_curve_xyz(np.asarray(C13, dtype=float), nt)
@@ -32265,6 +33247,27 @@ def build_mmm_patch_from_boundaries(
     X[:, -1] = C23[:, 0]
     Y[:, -1] = C23[:, 1]
     Z[:, -1] = C23[:, 2]
+
+    if apply_sphere_anchor and sphere_anchor_3mast is not None:
+        Z = apply_three_mast_sphere_anchor_to_patch_18(
+            X=X,
+            Y=Y,
+            Z=Z,
+            sphere_anchor=sphere_anchor_3mast
+        )
+
+        # Reimponer fronteras exactas por seguridad numérica.
+        X[0, :] = C12[:, 0]
+        Y[0, :] = C12[:, 1]
+        Z[0, :] = C12[:, 2]
+
+        X[:, 0] = C13[:, 0]
+        Y[:, 0] = C13[:, 1]
+        Z[:, 0] = C13[:, 2]
+
+        X[:, -1] = C23[:, 0]
+        Y[:, -1] = C23[:, 1]
+        Z[:, -1] = C23[:, 2]
 
     if preserve_nonnegative:
         Z = np.maximum(Z, 0.0)
@@ -32327,15 +33330,59 @@ def build_mlike_patch_from_three_boundaries(
     mlike_class = classify_mmm_sources(source12, source13, source23)
     surface_model = classify_surface_model(source12, source13, source23)
 
+    sphere_anchor_3mast = None
+    apply_three_mast_anchor = False
+
+    # Caso protegido de ancla física:
+    #   1) M-M-M real con tres crestas base normales.
+    #   2) M-M-N con ninguna arista como segmento/cable de guarda.
+    sphere_anchor_case_info = classify_mlike_sphere_anchor_case_18(
+        m1=m1,
+        m2=m2,
+        m3=m3,
+        source12=source12,
+        source13=source13,
+        source23=source23
+    )
+
+    if (
+        ENABLE_THREE_MAST_PHYSICAL_SPHERE_ANCHOR_18
+        and sphere_anchor_case_info.get("apply_candidate", False)
+    ):
+        sphere_anchor_3mast = compute_three_mast_support_sphere_belly_18(
+            m1=m1,
+            m2=m2,
+            m3=m3,
+            sphere_radius=sphere_radius,
+            clamp_z_nonnegative=True
+        )
+
+        if isinstance(sphere_anchor_3mast, dict):
+            sphere_anchor_3mast["anchor_case"] = sphere_anchor_case_info.get("case")
+            sphere_anchor_3mast["anchor_case_info"] = sphere_anchor_case_info
+
+        apply_three_mast_anchor = (
+            sphere_anchor_3mast.get("status") == "ok"
+            and (
+                sphere_anchor_3mast.get("belly_inside_xy", False)
+                or not THREE_MAST_APPLY_ONLY_IF_BELLY_INSIDE_XY_18
+            )
+        )
+
     if mlike_class == "INTERPOLABLE_MLIKE_SURFACE":
         X, Y, Z = build_mmm_patch_from_boundaries(
             C12=C12,
             C13=C13,
             C23=C23,
             ns=ns,
-            nt=nt
+            nt=nt,
+            sphere_anchor_3mast=sphere_anchor_3mast if apply_three_mast_anchor else None,
+            apply_sphere_anchor=apply_three_mast_anchor
         )
         status = "built"
+
+        if apply_three_mast_anchor:
+            surface_model = f"{surface_model}_WITH_MLIKE_SPHERE_ANCHOR"
 
     else:
         X = Y = Z = None
@@ -32357,6 +33404,11 @@ def build_mlike_patch_from_three_boundaries(
         "source12": source12,
         "source13": source13,
         "source23": source23,
+        "three_mast_sphere_anchor": sphere_anchor_3mast,
+        "three_mast_sphere_anchor_applied": apply_three_mast_anchor,
+        "mlike_sphere_anchor": sphere_anchor_3mast,
+        "mlike_sphere_anchor_applied": apply_three_mast_anchor,
+        "mlike_sphere_anchor_case": sphere_anchor_case_info,
     }
 
 
@@ -34356,9 +35408,10 @@ resultado_subtetras_prototipo = plot_one_subtetra_example_18(
 
 # @title
 # =========================================================
-# FASE 6X — VISUALIZACIÓN FINAL CON RELLENO M-M-Q,
+# FASE 5B — VISUALIZACIÓN FINAL CON RELLENO M-M-Q,
 # M-M-M, M-M-N Y N-N-M CON SUBDIVISIÓN LOCAL POR CRUCE DE CRESTAS
 # EXCLUYENDO GUARDAS INDEPENDIENTES Y SUS SUBCASOS
+# + ANCLA FÍSICA DE ESFERA PARA M-M-M Y M-M-N SIN ARISTAS DE GUARDA
 # =========================================================
 
 import copy
@@ -34389,7 +35442,7 @@ if missing_vars_fase6X:
     raise NameError(
         "Faltan variables necesarias para FASE 6X: "
         + ", ".join(missing_vars_fase6X)
-        + ". Ejecuta primero FASE 3B, FASE 4B y FASE 5."
+        + ". Ejecuta primero FASE 3B, FASE 4, FASE 4B y FASE 5."
     )
 
 if "maybe_reorder_independent_guard_case" not in globals():
@@ -34428,7 +35481,7 @@ registry_result_plot_19 = resultado_crestas_final
 # 0B) COMPATIBILIDAD PARA DIBUJO DE CRESTAS / M-Q / Q / N
 # =========================================================
 #
-# FASE 6X ya no exige add_triangles_crests_and_mq_to_existing_fig
+# FASE 5B ya no exige add_triangles_crests_and_mq_to_existing_fig
 # como entrada obligatoria. Si existe, se usa. Si no existe, se intenta
 # crear un alias desde versiones anteriores o desde el respaldo local
 # definido en FASE 4B.
@@ -34480,7 +35533,7 @@ if "add_triangles_crests_and_mq_to_existing_fig" not in globals():
             )
 
         print(
-            "Alias creado en FASE 6X: "
+            "Alias creado en FASE 5B: "
             "add_triangles_crests_and_mq_to_existing_fig "
             "-> add_triangles_crests_and_mq_to_existing_fig_plot15"
         )
@@ -34515,12 +35568,12 @@ if "add_triangles_crests_and_mq_to_existing_fig" not in globals():
             )
 
         print(
-            "Alias creado en FASE 6X desde el respaldo local de FASE 4B."
+            "Alias creado en FASE 5B desde el respaldo local de FASE 4B."
         )
 
     else:
         print(
-            "Advertencia FASE 6X: no existe "
+            "Advertencia FASE 5B: no existe "
             "add_triangles_crests_and_mq_to_existing_fig ni respaldo local. "
             "La figura se generará, pero no agregará esa capa auxiliar de "
             "crestas/M-Q/Q/N."
@@ -34550,6 +35603,27 @@ FASE6X_DIRECT_GUARD_SOURCES = {
     "direct_guard_wire_fragment_NN",
     "direct_guard_wire_fragment",
 }
+
+
+# ---------------------------------------------------------
+# Ancla física por esfera apoyada en tres soportes.
+#
+# Se aplica únicamente a:
+#   1) M-M-M normal con tres crestas base_normal_L_le_2S.
+#   2) M-M-N cuando ninguna de sus tres aristas es cable/segmento/
+#      fragmento de guarda directa.
+#
+# No se aplica a:
+#   - N-N-M;
+#   - subtetras con punto I;
+#   - superficies con aristas de guarda directa;
+#   - guardas independientes ni sus subcasos.
+# ---------------------------------------------------------
+
+ENABLE_FASE6X_THREE_SUPPORT_PHYSICAL_SPHERE_ANCHOR = True
+FASE6X_THREE_SUPPORT_ANCHOR_STRENGTH = 0.85
+FASE6X_THREE_SUPPORT_BOUNDARY_POWER = 0.85
+FASE6X_APPLY_ONLY_IF_BELLY_INSIDE_XY = True
 
 FASE6X_ALLOWED_BOUNDARY_SOURCES = {
     "base_normal_L_le_2S",
@@ -35573,6 +36647,373 @@ def get_all_fill_surfaces_fase6X(
     return out
 
 
+
+# =========================================================
+# 7B) ANCLA FÍSICA DE ESFERA EN TRES SOPORTES
+# =========================================================
+#
+# Objetivo:
+#   Ajustar suavemente el parche M-like hacia la superficie inferior de
+#   una esfera real de radio S apoyada en sus tres soportes.
+#
+# Casos permitidos:
+#   - M-M-M normal: solo si las tres fronteras son base_normal_L_le_2S.
+#   - M-M-N: solo si ninguna frontera es cable/segmento/fragmento
+#     de guarda directa.
+#
+# Protección:
+#   - No toca N-N-M.
+#   - No toca subtetras con punto I.
+#   - No toca aristas de guarda directa ni fragmentos.
+#   - No modifica crest_registry_final ni triangles_final_3B.
+# =========================================================
+
+def node_is_real_mast_fase6X(node):
+    if node is None or not isinstance(node, dict):
+        return False
+
+    node_type = str(node.get("type", ""))
+    label = str(node.get("label", ""))
+
+    return (
+        node_type in {"mast_top", "M"}
+        and not label.startswith("N_")
+        and not label.startswith("N_S2")
+        and not label.startswith("I_INT_6X")
+    )
+
+
+def node_is_auxiliary_N_fase6X(node):
+    if node is None or not isinstance(node, dict):
+        return False
+
+    node_type = str(node.get("type", ""))
+    label = str(node.get("label", ""))
+
+    return (
+        node_type in {"N", "auxiliary_N_subcase_2"}
+        or label.startswith("N_")
+        or label.startswith("N_S2")
+    )
+
+
+def barycentric_xy_fase6X(Pxy, Axy, Bxy, Cxy, tol=1e-9):
+    Pxy = np.asarray(Pxy, dtype=float)
+    Axy = np.asarray(Axy, dtype=float)
+    Bxy = np.asarray(Bxy, dtype=float)
+    Cxy = np.asarray(Cxy, dtype=float)
+
+    v0 = Bxy - Axy
+    v1 = Cxy - Axy
+    v2 = Pxy - Axy
+
+    den = cross2d_fase6X(v0, v1)
+
+    if abs(den) <= tol:
+        return None
+
+    l2 = cross2d_fase6X(v2, v1) / den
+    l3 = cross2d_fase6X(v0, v2) / den
+    l1 = 1.0 - l2 - l3
+
+    return np.array([l1, l2, l3], dtype=float)
+
+
+def point_inside_triangle_xy_fase6X(Pxy, Axy, Bxy, Cxy, tol=1e-6):
+    bary = barycentric_xy_fase6X(Pxy, Axy, Bxy, Cxy)
+
+    if bary is None:
+        return False, None
+
+    inside = np.all(bary >= -tol) and np.all(bary <= 1.0 + tol)
+
+    return bool(inside), bary
+
+
+def compute_three_support_sphere_belly_fase6X(
+    n1,
+    n2,
+    n3,
+    sphere_radius,
+    clamp_z_nonnegative=True
+):
+    """
+    Calcula la esfera de radio S que pasa por los tres soportes de una
+    superficie M-like.
+
+    La esfera tiene dos centros posibles respecto al plano de los tres
+    puntos; se escoge el centro con mayor Z para representar la esfera
+    apoyada desde arriba. El punto de barriga se calcula como:
+
+        P_belly = center - [0, 0, S]
+    """
+    R = float(sphere_radius)
+
+    P1 = local_node_point_fase6X(n1)
+    P2 = local_node_point_fase6X(n2)
+    P3 = local_node_point_fase6X(n3)
+
+    v12 = P2 - P1
+    d12 = float(np.linalg.norm(v12))
+
+    if d12 <= 1e-9:
+        return {
+            "status": "degenerate_edge",
+            "applied": False,
+        }
+
+    e1 = v12 / d12
+
+    v13 = P3 - P1
+    i = float(np.dot(e1, v13))
+
+    temp = v13 - i * e1
+    j = float(np.linalg.norm(temp))
+
+    if j <= 1e-9:
+        return {
+            "status": "collinear_supports",
+            "applied": False,
+        }
+
+    e2 = temp / j
+    e3 = np.cross(e1, e2)
+
+    e3_norm = float(np.linalg.norm(e3))
+
+    if e3_norm <= 1e-9:
+        return {
+            "status": "invalid_plane_normal",
+            "applied": False,
+        }
+
+    e3 = e3 / e3_norm
+
+    # Circuncentro del triángulo de soportes en el plano local.
+    x_c = d12 / 2.0
+    y_c = (i**2 + j**2 - d12 * i) / (2.0 * j)
+
+    circumcenter = P1 + x_c * e1 + y_c * e2
+    circumradius_sq = x_c**2 + y_c**2
+
+    if circumradius_sq > R**2 + 1e-8:
+        return {
+            "status": "sphere_radius_too_small",
+            "applied": False,
+            "circumradius": float(np.sqrt(circumradius_sq)),
+            "sphere_radius": R,
+        }
+
+    h = float(np.sqrt(max(R**2 - circumradius_sq, 0.0)))
+
+    center_a = circumcenter + h * e3
+    center_b = circumcenter - h * e3
+
+    # Centro físico superior.
+    center = center_a if center_a[2] >= center_b[2] else center_b
+
+    belly_raw = center - np.array([0.0, 0.0, R], dtype=float)
+    belly = belly_raw.copy()
+
+    if clamp_z_nonnegative:
+        belly[2] = max(belly[2], 0.0)
+
+    inside_xy, bary = point_inside_triangle_xy_fase6X(
+        belly[:2],
+        P1[:2],
+        P2[:2],
+        P3[:2]
+    )
+
+    return {
+        "status": "ok",
+        "applied": False,
+        "support_labels": [n1["label"], n2["label"], n3["label"]],
+        "sphere_radius": R,
+        "center": center,
+        "circumcenter": circumcenter,
+        "circumradius": float(np.sqrt(circumradius_sq)),
+        "belly_point": belly,
+        "belly_point_raw": belly_raw,
+        "belly_inside_xy": inside_xy,
+        "belly_barycentric_xy": bary,
+    }
+
+
+def lower_sphere_z_from_anchor_fase6X(X, Y, sphere_anchor):
+    C = np.asarray(sphere_anchor["center"], dtype=float)
+    R = float(sphere_anchor["sphere_radius"])
+
+    rho2 = (X - C[0])**2 + (Y - C[1])**2
+
+    Zs = np.full_like(X, np.nan, dtype=float)
+
+    valid = rho2 <= R**2 + 1e-8
+
+    Zs[valid] = C[2] - np.sqrt(np.maximum(R**2 - rho2[valid], 0.0))
+
+    return Zs
+
+
+def apply_three_support_sphere_anchor_to_patch_fase6X(
+    X,
+    Y,
+    Z,
+    sphere_anchor,
+    strength=FASE6X_THREE_SUPPORT_ANCHOR_STRENGTH,
+    boundary_power=FASE6X_THREE_SUPPORT_BOUNDARY_POWER
+):
+    """
+    Ajusta suavemente el interior del parche hacia la esfera física.
+
+    La burbuja interior vale cero en las tres fronteras, por lo que C12,
+    C13 y C23 se conservan exactamente después de reimponerlas.
+    """
+    if sphere_anchor is None:
+        return Z
+
+    if sphere_anchor.get("status") != "ok":
+        return Z
+
+    if (
+        FASE6X_APPLY_ONLY_IF_BELLY_INSIDE_XY
+        and not sphere_anchor.get("belly_inside_xy", False)
+    ):
+        return Z
+
+    nt, ns = Z.shape
+
+    s_values = np.linspace(0.0, 1.0, ns)[None, :]
+    t_values = np.linspace(0.0, 1.0, nt)[:, None]
+
+    # Coordenadas baricéntricas del dominio triangular del parche:
+    # t=0 es C12, s=0 es C13, s=1 es C23.
+    lam1 = (1.0 - s_values) * (1.0 - t_values)
+    lam2 = s_values * (1.0 - t_values)
+    lam3 = t_values
+
+    bubble = 27.0 * lam1 * lam2 * lam3
+    bubble = np.clip(bubble, 0.0, 1.0)
+    bubble = np.power(bubble, boundary_power)
+
+    Z_sphere = lower_sphere_z_from_anchor_fase6X(
+        X=X,
+        Y=Y,
+        sphere_anchor=sphere_anchor
+    )
+
+    mask = np.isfinite(Z_sphere) & np.isfinite(Z)
+
+    Z_new = Z.copy()
+
+    w = strength * bubble
+    w = np.clip(w, 0.0, 1.0)
+
+    Z_new[mask] = (
+        (1.0 - w[mask]) * Z[mask]
+        + w[mask] * Z_sphere[mask]
+    )
+
+    Z_new = np.maximum(Z_new, 0.0)
+
+    sphere_anchor["applied"] = True
+
+    return Z_new
+
+
+def should_apply_three_support_anchor_fase6X(
+    nodes,
+    sources
+):
+    """
+    Decide si puede usarse la esfera física de tres soportes.
+
+    Regla:
+      - M-M-M: solo el caso normal con tres crestas base_normal_L_le_2S.
+      - M-M-N: solo si ninguna arista es guarda directa/segmento/fragmento.
+    """
+    if not ENABLE_FASE6X_THREE_SUPPORT_PHYSICAL_SPHERE_ANCHOR:
+        return False, "disabled"
+
+    if len(nodes) != 3:
+        return False, "invalid_node_count"
+
+    if any(node_is_intersection_I_fase6X(n) for n in nodes):
+        return False, "contains_I_node"
+
+    sources = list(sources)
+
+    if any(src in FASE6X_INDEPENDENT_GUARD_SOURCES for src in sources):
+        return False, "independent_guard_source_protected"
+
+    if any(src in FASE6X_DIRECT_GUARD_SOURCES for src in sources):
+        return False, "direct_guard_edge_present"
+
+    n_m = sum(node_is_real_mast_fase6X(n) for n in nodes)
+    n_n = sum(node_is_auxiliary_N_fase6X(n) for n in nodes)
+
+    if n_m == 3 and n_n == 0:
+        if all(src == "base_normal_L_le_2S" for src in sources):
+            return True, "MMM_base_normal_three_masts"
+
+        return False, "MMM_not_all_base_normal"
+
+    if n_m == 2 and n_n == 1:
+        return True, "MMN_without_guard_edges"
+
+    return False, "surface_type_not_enabled"
+
+
+def maybe_apply_three_support_anchor_fase6X(
+    X,
+    Y,
+    Z,
+    nodes,
+    sources,
+    sphere_radius
+):
+    """
+    Calcula y aplica el ancla física si la superficie cumple la regla.
+    """
+    should_apply, reason = should_apply_three_support_anchor_fase6X(
+        nodes=nodes,
+        sources=sources
+    )
+
+    sphere_anchor = None
+    applied = False
+
+    if should_apply:
+        n1, n2, n3 = nodes
+
+        sphere_anchor = compute_three_support_sphere_belly_fase6X(
+            n1=n1,
+            n2=n2,
+            n3=n3,
+            sphere_radius=sphere_radius,
+            clamp_z_nonnegative=True
+        )
+
+        applied = (
+            sphere_anchor.get("status") == "ok"
+            and (
+                sphere_anchor.get("belly_inside_xy", False)
+                or not FASE6X_APPLY_ONLY_IF_BELLY_INSIDE_XY
+            )
+        )
+
+        if applied:
+            Z = apply_three_support_sphere_anchor_to_patch_fase6X(
+                X=X,
+                Y=Y,
+                Z=Z,
+                sphere_anchor=sphere_anchor
+            )
+
+    return Z, sphere_anchor, applied, reason
+
+
+
 # =========================================================
 # 8) CONSTRUCCIÓN LOCAL DE SUPERFICIE DESDE TRES FRONTERAS
 # =========================================================
@@ -36000,6 +37441,7 @@ def build_patch_from_three_boundaries_local_fase6X(
     m2,
     m3,
     registry_result,
+    sphere_radius=None,
     ns=75,
     nt=75
 ):
@@ -36107,7 +37549,26 @@ def build_patch_from_three_boundaries_local_fase6X(
         nodes=(m1, m2, m3)
     )
 
-    # Reimponer fronteras exactas después del ajuste para no deformar crestas.
+    # Nuevo ajuste físico:
+    #   - M-M-M normal con tres crestas base_normal_L_le_2S.
+    #   - M-M-N si ninguna arista es guarda directa/segmento/fragmento.
+    sphere_anchor = None
+    sphere_anchor_applied = False
+    sphere_anchor_reason = "sphere_radius_none"
+
+    if sphere_radius is not None:
+        Z, sphere_anchor, sphere_anchor_applied, sphere_anchor_reason = (
+            maybe_apply_three_support_anchor_fase6X(
+                X=X,
+                Y=Y,
+                Z=Z,
+                nodes=(m1, m2, m3),
+                sources=(source12, source13, source23),
+                sphere_radius=sphere_radius
+            )
+        )
+
+    # Reimponer fronteras exactas después de cualquier ajuste para no deformar crestas.
     X[0, :] = C12[:, 0]
     Y[0, :] = C12[:, 1]
     Z[0, :] = C12[:, 2]
@@ -36138,6 +37599,12 @@ def build_patch_from_three_boundaries_local_fase6X(
         "source12": source12,
         "source13": source13,
         "source23": source23,
+        "three_support_sphere_anchor": sphere_anchor,
+        "three_support_sphere_anchor_applied": sphere_anchor_applied,
+        "three_support_sphere_anchor_reason": sphere_anchor_reason,
+        # Compatibilidad con la FASE 5 anterior.
+        "three_mast_sphere_anchor": sphere_anchor,
+        "three_mast_sphere_anchor_applied": sphere_anchor_applied,
     }
 
 
@@ -36191,6 +37658,7 @@ def build_patch_for_surface_fase6X(
             m2=m2,
             m3=m3,
             registry_result=registry_result,
+            sphere_radius=sphere_radius,
             ns=ns,
             nt=nt
         )
@@ -36237,6 +37705,7 @@ def build_patch_for_surface_fase6X(
         m2=m2,
         m3=m3,
         registry_result=registry_result,
+        sphere_radius=sphere_radius,
         ns=ns,
         nt=nt
     )
@@ -36289,6 +37758,7 @@ def add_all_mlike_patches_to_fig_fase6X(
     count_reordered = 0
     count_virtual = 0
     count_skipped_original = 0
+    count_three_support_anchor = 0
 
     type_counter = {
         "M-M-M": 0,
@@ -36384,6 +37854,21 @@ def add_all_mlike_patches_to_fig_fase6X(
         source13 = patch.get("source13", "")
         source23 = patch.get("source23", "")
 
+        three_support_anchor_applied = bool(
+            patch.get(
+                "three_support_sphere_anchor_applied",
+                patch.get("three_mast_sphere_anchor_applied", False)
+            )
+        )
+
+        three_support_anchor_reason = patch.get(
+            "three_support_sphere_anchor_reason",
+            ""
+        )
+
+        if three_support_anchor_applied:
+            count_three_support_anchor += 1
+
         m1, m2, m3 = nodes_used
 
         original_txt = "-".join(
@@ -36421,6 +37906,8 @@ def add_all_mlike_patches_to_fig_fase6X(
                 f"C23 {m2['label']}-{m3['label']}: {source23}<br>"
                 f"Reordenado: {reorder_info.get('applied', False)}<br>"
                 f"Fuente independiente: {reorder_info.get('independent_source', None)}<br>"
+                f"Ancla esfera 3 soportes: {three_support_anchor_applied}<br>"
+                f"Razón ancla: {three_support_anchor_reason}<br>"
                 "x=%{x:.2f}<br>"
                 "y=%{y:.2f}<br>"
                 "z=%{z:.2f}<extra></extra>"
@@ -36431,7 +37918,7 @@ def add_all_mlike_patches_to_fig_fase6X(
 
     if show_internal_summary:
         print("=========================================================")
-        print("FASE 6X - RESUMEN RELLENO M-like CON SUBDIVISIÓN LOCAL")
+        print("FASE 5B - RESUMEN RELLENO M-like CON SUBDIVISIÓN LOCAL")
         print("M-M-M / M-M-N / N-N-M")
         print("=========================================================")
         print(f"Superficies M-like evaluadas                 : {count_total}")
@@ -36443,6 +37930,7 @@ def add_all_mlike_patches_to_fig_fase6X(
         print(f"  Subtriángulos virtuales detectados         : {type_counter.get('subtriangulated_M_like', 0)}")
         print(f"Parches generados correctamente              : {count_ok}")
         print(f"Parches virtuales                            : {count_virtual}")
+        print(f"Parches con ancla física 3 soportes          : {count_three_support_anchor}")
         print(f"Parches no generados por error               : {count_fail}")
         print(f"Parches no soportados                        : {count_unsupported}")
         print(f"Parches reordenados                          : {count_reordered}")
@@ -36647,9 +38135,9 @@ def plot_full_surface_with_mmq_and_mlike_fill_fase6X(
 
     fig.update_layout(
         title=(
-            "FASE 6X: M-M-Q + M-M-M/M-M-N/N-N-M "
+            "FASE 5B: M-M-Q + M-M-M/M-M-N/N-N-M "
             "con subdivisión local por cruce de crestas "
-            "sin tocar guardas independientes"
+            "+ ancla física MMM/MMN sin guarda"
         ),
         scene=dict(
             xaxis_title="X",
@@ -36667,10 +38155,10 @@ def plot_full_surface_with_mmq_and_mlike_fill_fase6X(
 
 
 # =========================================================
-# 11) EJECUCIÓN FASE 6X
+# 11) EJECUCIÓN FASE 5B
 # =========================================================
 
-fig_superficies_mmq_mmm_3B, resultado_crestas_final_3B_subdiv, tri_nodes_final_3B_subdiv, fase6X_subdivision_records = (
+fig_superficies_mmq_mmm_3B, resultado_crestas_final_3B_subdiv, tri_nodes_final_3B_subdiv, fase5B_subdivision_records = (
     plot_full_surface_with_mmq_and_mlike_fill_fase6X(
         masts=masts,
         sphere_radius=S,
@@ -36697,1134 +38185,1468 @@ fig_superficies_mmq_mmm = fig_superficies_mmq_mmm_3B
 resultado_crestas_final_3B_with_intersections = resultado_crestas_final_3B_subdiv
 tri_nodes_final_3B_with_intersections = tri_nodes_final_3B_subdiv
 
-"""# FASE 6: Verificación
-
-Esta fase realiza la verificación de apantallamiento de los equipos/cubos usando directamente la capa total generada en la figura final del modelo. En lugar de reconstruir las superficies desde cero, busca automáticamente la figura final, extrae todas las superficies visibles que representan la cubierta de apantallamiento y descarta superficies de referencia como el plano z = 0.
-
-Luego, para cada equipo definido en cube_inputs, el código muestrea puntos sobre la cara superior y las caras laterales del cubo. En cada punto, interpola la altura de la cubierta de apantallamiento y verifica si el punto del equipo queda por debajo de dicha capa.
-
-"""
-
 # @title
 # =========================================================
-# FASE 6 — VERIFICACIÓN DE APANTALLAMIENTO DE EQUIPOS
-# USANDO LA FIGURA FINAL GENERADA EN FASE 6X
+# FASE 6 — MÓDULO DE VERIFICACIÓN DE APANTALLAMIENTO
+# POR NUBE VOLUMÉTRICA DE PUNTOS DEL EQUIPO
 # =========================================================
 #
 # Objetivo:
-#   Tomar la última figura completa del modelo, agregar los equipos
-#   definidos en cube_inputs y calcular qué porcentaje de la superficie
-#   expuesta de cada equipo queda por debajo de la capa de apantallamiento.
+#   Verificar si el volumen de cada equipo queda por debajo de la capa
+#   resultante de apantallamiento.
 #
-# Idea de verificación:
-#   1) Se busca automáticamente la figura final generada previamente.
-#      En esta versión se exige específicamente:
-#          - fig_superficies_mmq_mmm
+# Criterio físico usado:
+#   Para cada punto del equipo:
 #
-#      Es decir, se verifica la ÚLTIMA gráfica real generada por FASE 6X.
+#       P_equipo = (x, y, z)
 #
-#   2) Se extraen de esa figura las trazas tipo go.Surface que representan
-#      la cubierta de apantallamiento:
-#          - superficies de mástil solo;
-#          - rellenos M-M-Q;
-#          - rellenos M-M-M / M-M-N / N-N-M.
+#   se calcula la altura de la capa resultante en esa misma coordenada
+#   de planta:
 #
-#      Se descartan superficies de referencia como:
-#          - Plano z=0;
-#          - Suelo.
+#       z_capa = z_capa(x, y)
 #
-#   3) Cada superficie se discretiza en triángulos 2D/3D. Para cada punto
-#      de muestreo del equipo, se interpola la altura Z de la cubierta en
-#      la misma coordenada XY.
+#   El punto se considera apantallado si:
 #
-#   4) Un punto del equipo se considera apantallado si:
+#       z <= z_capa + tolerancia
 #
-#          z_equipo <= z_cubierta(x, y) + tolerancia
+#   Si en ese (x, y) no existe ninguna superficie de la capa resultante,
+#   el punto se considera NO apantallado.
 #
-#      Si en esa coordenada XY no existe ninguna superficie de cubierta,
-#      el punto se considera NO apantallado.
+# Porcentaje:
+#   El porcentaje de apantallamiento se calcula como:
 #
-#   5) El porcentaje se calcula de forma ponderada por área sobre:
-#          - cara superior;
-#          - cuatro caras laterales.
+#       % apantallado = puntos_apantallados / puntos_totales * 100
 #
-#      No se evalúa la cara inferior porque normalmente el equipo está
-#      apoyado en el suelo/base y no es una cara expuesta al impacto.
+#   Como el volumen del equipo es continuo, esta fase lo discretiza como
+#   una nube 3D de puntos. Reducir FASE6_POINT_SPACING aumenta la precisión,
+#   pero también aumenta el tiempo de ejecución.
 #
-# Entradas esperadas:
+# Superficies consideradas como "capa resultante":
+#   1) Superficies de mástil solo desde los intervalos útiles.
+#   2) Superficies M-M-Q construidas con FASE 4.
+#   3) Superficies M-like construidas con FASE 5B:
+#        - M-M-M
+#        - M-M-N
+#        - N-N-M
+#        - subtriángulos virtuales por cruce local de crestas
+#
+# Regla cuando varias superficies cubren el mismo (x, y):
+#   Se usa la mayor altura disponible:
+#
+#       z_capa(x, y) = max(z_superficie_i(x, y))
+#
+#   Esto representa la envolvente superior disponible de protección.
+#
+# Entrada esperada:
+#   - masts
+#   - S
 #   - cube_inputs
-#   - fig_superficies_mmq_mmm
+#   - tri_nodes_final_3B
+#   - triangles_final_3B
+#   - resultado_crestas_final
+#   - crest_registry_final
+#   - build_mmq_patch_from_boundaries          [FASE 4]
+#   - build_registry_result_with_subdivisions_fase6X [FASE 5B]
+#   - get_all_fill_surfaces_fase6X             [FASE 5B]
+#   - original_surface_should_be_skipped_fase6X [FASE 5B]
+#   - local_classify_mlike_surface_fase6X      [FASE 5B]
+#   - local_get_mlike_nodes_fase6X             [FASE 5B]
+#   - build_patch_for_surface_fase6X           [FASE 5B]
 #
-# Salidas:
+# Entrada adicional para mástil solo:
+#   - filtered_results_final o results_input_5 o results
+#
+# Salidas principales:
+#   - fase6_surface_patches
+#   - fase6_surface_interpolators
+#   - fase6_point_results_df
+#   - fase6_equipment_summary_df
+#   - fase6_resultados_por_equipo
 #   - fig_fase6_verificacion
-#   - fase6_shield_triangles
-#   - fase6_verification_records
-#   - fase6_verification_summary
-#   - fase6_verification_dataframe, si pandas está disponible
-#
-# Nota:
-#   Esta fase NO modifica las superficies ni las crestas del modelo.
-#   Solo analiza la figura final ya construida.
-#
-# Ajuste visual de esta versión:
-#   - Si un equipo NO cumple, ya no se rellena completamente de rojo.
-#   - El cuerpo del equipo queda gris/transparente.
-#   - Solo los bordes se vuelven rojos.
-#   - Los bordes rojos pueden palpitar con el botón de animación.
 # =========================================================
 
 import copy
 import numpy as np
 import plotly.graph_objects as go
 
+try:
+    import pandas as pd
+except Exception:
+    pd = None
+
+try:
+    import matplotlib.tri as mtri
+except Exception as exc:
+    raise ImportError(
+        "FASE 6 requiere matplotlib.tri para interpolar la altura de la capa. "
+        "En Colab normalmente ya está disponible."
+    ) from exc
+
 
 # =========================================================
-# 0) PARÁMETROS EDITABLES DE VERIFICACIÓN
+# 0) PARÁMETROS AJUSTABLES
 # =========================================================
 
-# Número de muestras sobre la cara superior.
-FASE6_TOP_NX = 31
-FASE6_TOP_NY = 31
+# Separación entre puntos del volumen del equipo, en las mismas unidades
+# de x, y, z. Menor valor = verificación más fina y más lenta.
+FASE6_POINT_SPACING = 0.25
 
-# Número de muestras sobre caras laterales.
-FASE6_SIDE_N_ALONG = 31
-FASE6_SIDE_NZ = 21
+# Resolución usada para reconstruir superficies de mástil solo.
+FASE6_SINGLE_MAST_NR = 55
+FASE6_SINGLE_MAST_NT = 100
 
-# Tolerancia vertical para considerar un punto justo sobre la frontera.
-FASE6_VERTICAL_TOL = 1e-6
+# Resolución usada para reconstruir superficies M-M-Q.
+FASE6_MMQ_NS = 80
+FASE6_MMQ_NT = 80
 
-# Si el porcentaje es mayor o igual a este valor, se marca como protegido.
-# 100.0 = cualquier punto de la superficie fuera del escudo => no apantallado.
-FASE6_OK_PERCENT_THRESHOLD = 100.0
+# Resolución usada para reconstruir superficies M-like.
+FASE6_MLIKE_NS = 80
+FASE6_MLIKE_NT = 80
 
-# Mostrar todos los puntos de muestreo.
-# Si está en False, solo se muestran los puntos NO apantallados.
-FASE6_SHOW_ALL_SAMPLE_POINTS = False
+# Tolerancia vertical para decidir si z_equipo <= z_capa.
+FASE6_Z_TOL = 1e-6
 
-# Mostrar puntos no apantallados.
-# En esta versión se dejan apagados para que el equipo NO se vea saturado de puntos rojos.
-FASE6_SHOW_UNPROTECTED_POINTS = False
+# Tolerancia usada para armar triangulaciones 2D de las superficies.
+FASE6_AREA_TOL = 1e-12
 
-# Visual del equipo:
-#   - El cuerpo siempre se dibuja gris/transparente.
-#   - Si cumple, los bordes son verdes.
-#   - Si no cumple, los bordes son rojos y pueden palpitar.
-FASE6_EQUIPMENT_MESH_COLOR = "lightgray"
-FASE6_EQUIPMENT_MESH_OPACITY = 0.10
+# Máximo de puntos por categoría que se muestran en la figura.
+# La verificación usa TODOS los puntos generados, esto solo controla la visualización.
+FASE6_MAX_POINTS_TO_PLOT_PER_CLASS = 4000
 
-FASE6_OK_EDGE_COLOR = "#888888"
-FASE6_FAILED_EDGE_COLOR = "#888888"
+# Si True, se intenta copiar la figura final existente y agregar la nube del equipo.
+# Si False, se crea una figura nueva solo con el equipo y los puntos de verificación.
+FASE6_USE_EXISTING_FINAL_FIG = True
 
-FASE6_OK_EDGE_WIDTH = 3
-FASE6_FAILED_EDGE_WIDTH_MIN = 3
-FASE6_FAILED_EDGE_WIDTH_MAX = 3
-
-# Activar animación tipo pulso para bordes rojos.
-# En Plotly/Colab aparece un botón: "▶ Pulso bordes rojos".
-FASE6_ENABLE_FAILED_EDGE_PULSE = False
-
-# Mostrar un halo rojo suave alrededor de los bordes fallidos.
-FASE6_SHOW_FAILED_EDGE_HALO = False
-FASE6_FAILED_HALO_WIDTH = 0
-FASE6_FAILED_HALO_COLOR = "rgba(0,0,0,0)"
-
-# Construcción del índice espacial para acelerar la consulta.
-FASE6_SPATIAL_BINS = 90
-
-# Trazas tipo Surface que NO deben usarse como cubierta.
-FASE6_EXCLUDE_SURFACE_KEYWORDS = {
-    "plano z=0",
-    "z=0",
-    "suelo",
-    "ground",
-    "base",
-    "referencia",
-}
+# Si True, además de la nube de puntos, dibuja el equipo como volumen 3D
+# rectangular usando las dimensiones de cube_inputs.
+FASE6_PLOT_EQUIPMENT_SOLID = True
+FASE6_EQUIPMENT_SOLID_OPACITY = 0.18
+FASE6_PLOT_EQUIPMENT_EDGES = False
 
 
 # =========================================================
 # 1) VALIDACIÓN DE ENTRADAS
 # =========================================================
 
-if "cube_inputs" not in globals():
+required_vars_fase6 = [
+    "masts",
+    "S",
+    "cube_inputs",
+    "tri_nodes_final_3B",
+    "triangles_final_3B",
+    "resultado_crestas_final",
+    "crest_registry_final",
+    "build_mmq_patch_from_boundaries",
+    "build_registry_result_with_subdivisions_fase6X",
+    "get_all_fill_surfaces_fase6X",
+    "original_surface_should_be_skipped_fase6X",
+    "local_classify_mlike_surface_fase6X",
+    "local_get_mlike_nodes_fase6X",
+    "build_patch_for_surface_fase6X",
+]
+
+missing_vars_fase6 = [
+    v for v in required_vars_fase6
+    if v not in globals()
+]
+
+if missing_vars_fase6:
     raise NameError(
-        "No se encontró 'cube_inputs'. "
-        "Ejecuta primero la celda de entrada de equipos."
+        "Faltan variables necesarias para FASE 6: "
+        + ", ".join(missing_vars_fase6)
+        + ". Ejecuta primero FASE 3B, FASE 4 y FASE 5B."
     )
 
-# Esta verificación queda amarrada específicamente a la ÚLTIMA gráfica de FASE 6X.
-# No usa figuras anteriores para evitar verificar una versión vieja del modelo.
-fase6_base_fig_name = "fig_superficies_mmq_mmm"
-
-if fase6_base_fig_name not in globals():
+if "filtered_results_final" in globals():
+    results_fase6 = filtered_results_final
+    results_source_fase6 = "filtered_results_final"
+elif "results_input_5" in globals():
+    results_fase6 = results_input_5
+    results_source_fase6 = "results_input_5"
+elif "results" in globals():
+    results_fase6 = results
+    results_source_fase6 = "results"
+else:
     raise NameError(
-        "No se encontró 'fig_superficies_mmq_mmm'. "
-        "Ejecuta primero la FASE 6X completa, porque esta FASE 6 verifica exactamente esa última gráfica."
+        "No se encontró filtered_results_final, results_input_5 ni results. "
+        "Se necesita una de estas variables para reconstruir las superficies "
+        "de mástil solo."
     )
 
-fase6_base_fig = globals()[fase6_base_fig_name]
-
-if fase6_base_fig is None or not hasattr(fase6_base_fig, "data"):
-    raise TypeError(
-        "'fig_superficies_mmq_mmm' existe, pero no parece ser una figura Plotly válida."
-    )
+if "guard_wire_inputs" in globals():
+    guard_wire_inputs_fase6 = guard_wire_inputs
+else:
+    guard_wire_inputs_fase6 = None
 
 
 # =========================================================
-# 2) UTILIDADES GEOMÉTRICAS
+# 2) UTILIDADES GENERALES
 # =========================================================
 
-def _fase6_as_float_array(value):
-    arr = np.asarray(value, dtype=float)
+def fase6_node_label(node):
+    if isinstance(node, dict):
+        return str(node.get("label", node.get("id", "?")))
+    return str(node)
+
+
+def fase6_node_type(node):
+    if isinstance(node, dict):
+        t = node.get("type", None)
+        if t is not None:
+            return str(t)
+
+        label = str(node.get("label", ""))
+        if label:
+            return label[0].upper()
+
+    label = str(node)
+    return label[0].upper() if label else "?"
+
+
+def fase6_triangle_type(tri):
+    nodes = list(tri.get("nodes", []))
+    types = sorted([fase6_node_type(n) for n in nodes])
+
+    sig = "".join(types)
+
+    if sig == "MMM":
+        return "M-M-M"
+    if sig == "MMQ":
+        return "M-M-Q"
+    if sig == "MMN":
+        return "M-M-N"
+    if sig == "MNN":
+        return "N-N-M"
+
+    return sig
+
+
+def fase6_safe_array(a):
+    arr = np.asarray(a, dtype=float)
     return arr
 
 
-def _fase6_trace_name(trace):
-    try:
-        name = trace.name
-    except Exception:
-        name = None
+def fase6_make_patch_record(name, patch_type, X, Y, Z, source="", metadata=None):
+    X = fase6_safe_array(X)
+    Y = fase6_safe_array(Y)
+    Z = np.maximum(fase6_safe_array(Z), 0.0)
 
-    if name is None:
-        return ""
+    if X.shape != Y.shape or X.shape != Z.shape:
+        raise ValueError(
+            f"Patch {name} tiene dimensiones incompatibles: "
+            f"X{X.shape}, Y{Y.shape}, Z{Z.shape}"
+        )
 
-    return str(name)
+    finite = np.isfinite(X) & np.isfinite(Y) & np.isfinite(Z)
 
+    if np.count_nonzero(finite) < 3:
+        return None
 
-def _fase6_is_excluded_surface(trace):
-    name = _fase6_trace_name(trace).strip().lower()
-
-    for key in FASE6_EXCLUDE_SURFACE_KEYWORDS:
-        if key in name:
-            return True
-
-    try:
-        z = _fase6_as_float_array(trace.z)
-        if z.size > 0:
-            z_finite = z[np.isfinite(z)]
-            if z_finite.size > 0 and np.nanmax(np.abs(z_finite)) <= 1e-10:
-                return True
-    except Exception:
-        pass
-
-    return False
+    return {
+        "name": str(name),
+        "type": str(patch_type),
+        "source": str(source),
+        "X": X,
+        "Y": Y,
+        "Z": Z,
+        "finite_count": int(np.count_nonzero(finite)),
+        "metadata": metadata or {},
+    }
 
 
-def _fase6_surface_xyz(trace):
+def fase6_effective_radius_local(height, sphere_radius):
     """
-    Devuelve X, Y, Z como matrices 2D compatibles.
-    Acepta superficies con:
-      - X, Y, Z 2D;
-      - X, Y 1D y Z 2D.
+    Usa effective_radius global si existe. Si no, aplica la fórmula local.
     """
-    Z = _fase6_as_float_array(trace.z)
+    fn = globals().get("effective_radius", None)
 
-    if Z.ndim != 2:
-        return None, None, None
+    if callable(fn):
+        return float(fn(height, sphere_radius))
 
-    X = _fase6_as_float_array(trace.x)
-    Y = _fase6_as_float_array(trace.y)
+    z_star = min(float(sphere_radius), float(height))
+    radicand = float(sphere_radius) ** 2 - (float(sphere_radius) - z_star) ** 2
+    return float(np.sqrt(max(0.0, radicand)))
 
-    if X.ndim == 1 and Y.ndim == 1:
-        X, Y = np.meshgrid(X, Y)
 
-    elif X.ndim == 1 and Y.shape == Z.shape:
-        X = np.tile(X.reshape(1, -1), (Z.shape[0], 1))
+def fase6_rolling_sphere_z_local(u, a, R):
+    fn = globals().get("rolling_sphere_z", None)
 
-    elif Y.ndim == 1 and X.shape == Z.shape:
-        Y = np.tile(Y.reshape(-1, 1), (1, Z.shape[1]))
+    if callable(fn):
+        return fn(u, a, R)
 
-    if X.shape != Z.shape or Y.shape != Z.shape:
-        try:
-            X = np.broadcast_to(X, Z.shape).astype(float)
-            Y = np.broadcast_to(Y, Z.shape).astype(float)
-        except Exception:
-            return None, None, None
+    inside = R ** 2 - (u - a) ** 2
+    inside = np.maximum(inside, 0.0)
+    return R - np.sqrt(inside)
+
+
+def fase6_build_partial_surface_for_interval_local(mast, sphere_radius, interval, nr=55, nt=100):
+    """
+    Usa build_partial_surface_for_interval global si existe. Si no, reconstruye
+    localmente la superficie parcial de mástil solo.
+    """
+    fn = globals().get("build_partial_surface_for_interval", None)
+
+    if callable(fn):
+        return fn(
+            mast=mast,
+            sphere_radius=sphere_radius,
+            interval=interval,
+            nr=nr,
+            nt=nt
+        )
+
+    a = fase6_effective_radius_local(mast.h, sphere_radius)
+
+    if a <= 1e-12:
+        return None
+
+    theta1, theta2 = interval
+    u = np.linspace(0.0, a, nr)
+    theta = np.linspace(theta1, theta2, nt)
+
+    U, TH = np.meshgrid(u, theta, indexing="xy")
+
+    X = mast.x + U * np.cos(TH)
+    Y = mast.y + U * np.sin(TH)
+    Z = fase6_rolling_sphere_z_local(U, a, sphere_radius)
 
     return X, Y, Z
 
 
-def _fase6_triangle_area_xy(A, B, C):
-    return 0.5 * abs(
-        (B[0] - A[0]) * (C[1] - A[1])
-        - (B[1] - A[1]) * (C[0] - A[0])
-    )
+def fase6_surface_bbox(X, Y, margin=1e-9):
+    finite = np.isfinite(X) & np.isfinite(Y)
 
-
-def _fase6_interpolate_z_in_triangle(px, py, A, B, C, tol=1e-10):
-    """
-    Interpola z en un triángulo usando coordenadas baricéntricas en XY.
-    Retorna None si el punto no cae dentro del triángulo en planta XY.
-    """
-    v0 = np.array([B[0] - A[0], B[1] - A[1]], dtype=float)
-    v1 = np.array([C[0] - A[0], C[1] - A[1]], dtype=float)
-    v2 = np.array([px - A[0], py - A[1]], dtype=float)
-
-    den = v0[0] * v1[1] - v1[0] * v0[1]
-
-    if abs(den) <= 1e-14:
+    if not np.any(finite):
         return None
-
-    u = (v2[0] * v1[1] - v1[0] * v2[1]) / den
-    v = (v0[0] * v2[1] - v2[0] * v0[1]) / den
-    w = 1.0 - u - v
-
-    if u >= -tol and v >= -tol and w >= -tol:
-        z = w * A[2] + u * B[2] + v * C[2]
-        return float(z)
-
-    return None
-
-
-# =========================================================
-# 3) EXTRACCIÓN DE LA CUBIERTA DESDE LA FIGURA
-# =========================================================
-
-def extract_shield_triangles_from_fig_fase6(fig):
-    """
-    Convierte las superficies visibles de apantallamiento en una lista
-    de triángulos 3D.
-    """
-    triangles = []
-    skipped_surfaces = []
-    used_surfaces = []
-
-    for trace_idx, trace in enumerate(fig.data):
-        if getattr(trace, "type", None) != "surface":
-            continue
-
-        name = _fase6_trace_name(trace)
-
-        if _fase6_is_excluded_surface(trace):
-            skipped_surfaces.append(name)
-            continue
-
-        X, Y, Z = _fase6_surface_xyz(trace)
-
-        if X is None:
-            skipped_surfaces.append(name)
-            continue
-
-        used_surfaces.append(name)
-
-        n_rows, n_cols = Z.shape
-
-        for i in range(n_rows - 1):
-            for j in range(n_cols - 1):
-
-                P00 = np.array([X[i, j],     Y[i, j],     Z[i, j]],     dtype=float)
-                P10 = np.array([X[i + 1, j], Y[i + 1, j], Z[i + 1, j]], dtype=float)
-                P01 = np.array([X[i, j + 1], Y[i, j + 1], Z[i, j + 1]], dtype=float)
-                P11 = np.array([X[i + 1, j + 1], Y[i + 1, j + 1], Z[i + 1, j + 1]], dtype=float)
-
-                quad_points = [P00, P10, P01, P11]
-
-                if not all(np.all(np.isfinite(p)) for p in quad_points):
-                    continue
-
-                candidate_tris = [
-                    (P00, P10, P11),
-                    (P00, P11, P01),
-                ]
-
-                for A, B, C in candidate_tris:
-                    area_xy = _fase6_triangle_area_xy(A, B, C)
-
-                    if area_xy <= 1e-12:
-                        continue
-
-                    tri_record = {
-                        "A": A,
-                        "B": B,
-                        "C": C,
-                        "trace_idx": trace_idx,
-                        "trace_name": name,
-                        "xmin": float(min(A[0], B[0], C[0])),
-                        "xmax": float(max(A[0], B[0], C[0])),
-                        "ymin": float(min(A[1], B[1], C[1])),
-                        "ymax": float(max(A[1], B[1], C[1])),
-                    }
-
-                    triangles.append(tri_record)
-
-    return triangles, used_surfaces, skipped_surfaces
-
-
-def build_spatial_index_fase6(triangles, n_bins=80):
-    """
-    Crea un índice espacial simple en XY para no revisar todos los triángulos
-    en cada punto de muestreo.
-    """
-    if not triangles:
-        return None
-
-    xmin = min(t["xmin"] for t in triangles)
-    xmax = max(t["xmax"] for t in triangles)
-    ymin = min(t["ymin"] for t in triangles)
-    ymax = max(t["ymax"] for t in triangles)
-
-    if abs(xmax - xmin) <= 1e-12:
-        xmax = xmin + 1.0
-
-    if abs(ymax - ymin) <= 1e-12:
-        ymax = ymin + 1.0
-
-    grid = {}
-
-    def to_ix(x):
-        return int(np.clip(np.floor((x - xmin) / (xmax - xmin) * n_bins), 0, n_bins - 1))
-
-    def to_iy(y):
-        return int(np.clip(np.floor((y - ymin) / (ymax - ymin) * n_bins), 0, n_bins - 1))
-
-    for idx, tri in enumerate(triangles):
-        ix0 = to_ix(tri["xmin"])
-        ix1 = to_ix(tri["xmax"])
-        iy0 = to_iy(tri["ymin"])
-        iy1 = to_iy(tri["ymax"])
-
-        for ix in range(ix0, ix1 + 1):
-            for iy in range(iy0, iy1 + 1):
-                grid.setdefault((ix, iy), []).append(idx)
 
     return {
-        "grid": grid,
-        "xmin": xmin,
-        "xmax": xmax,
-        "ymin": ymin,
-        "ymax": ymax,
-        "n_bins": n_bins,
+        "xmin": float(np.nanmin(X[finite]) - margin),
+        "xmax": float(np.nanmax(X[finite]) + margin),
+        "ymin": float(np.nanmin(Y[finite]) - margin),
+        "ymax": float(np.nanmax(Y[finite]) + margin),
     }
 
 
-def _egm_shield_height(px, py):
-    """
-    Fórmula directa IEEE 998 — esfera rodante.
-    Calcula la altura de protección en (px, py) para todos los mástiles.
-    Retorna (z_shield_max, 'EGM_directo') o (None, None).
-
-    z_shield = h_m - S + sqrt(S² - r²)
-    donde r = distancia horizontal al mástil.
-    """
-    try:
-        _masts = mast_inputs  # global del namespace del notebook
-        _S = float(S)
-    except NameError:
-        return None, None
-
-    z_best = None
-    for (mx, my, mh) in _masts:
-        r2 = (px - mx) ** 2 + (py - my) ** 2
-        if r2 > _S * _S:
-            continue
-        z_here = float(mh) - _S + sqrt(max(0.0, _S * _S - r2))
-        if z_best is None or z_here > z_best:
-            z_best = z_here
-
-    if z_best is None:
-        return None, None
-    return z_best, "EGM_directo"
+def fase6_area2_xy(p1, p2, p3):
+    return (
+        (p2[0] - p1[0]) * (p3[1] - p1[1])
+        - (p3[0] - p1[0]) * (p2[1] - p1[1])
+    )
 
 
-def query_shield_height_fase6(px, py, triangles, spatial_index):
-    """
-    Retorna:
-      - z_cubierta máxima encontrada en XY;
-      - nombre de la superficie que la aporta.
+# =========================================================
+# 3) RECONSTRUCCIÓN DE LA CAPA RESULTANTE
+# =========================================================
 
-    Siempre toma el máximo entre la triangulación y la fórmula directa
-    IEEE 998 (esfera rodante). Esto corrige inexactitudes de la malla
-    triangulada en bordes, vértices y zonas de baja resolución.
-    """
-    # ── 1. Fórmula directa IEEE 998 (siempre calculada) ──────────────────────
-    z_egm, src_egm = _egm_shield_height(px, py)
+def fase6_collect_single_mast_surface_patches(
+    masts,
+    results_obj,
+    sphere_radius,
+    nr=55,
+    nt=100
+):
+    patches = []
 
-    # ── 2. Triangulación ──────────────────────────────────────────────────────
-    if spatial_index is None:
-        candidate_ids = range(len(triangles))
-    else:
-        xmin = spatial_index["xmin"]
-        xmax = spatial_index["xmax"]
-        ymin = spatial_index["ymin"]
-        ymax = spatial_index["ymax"]
-        n_bins = spatial_index["n_bins"]
-
-        if px < xmin or px > xmax or py < ymin or py > ymax:
-            return z_egm, src_egm  # punto fuera del bbox — solo EGM directo
-
-        ix = int(np.clip(np.floor((px - xmin) / (xmax - xmin) * n_bins), 0, n_bins - 1))
-        iy = int(np.clip(np.floor((py - ymin) / (ymax - ymin) * n_bins), 0, n_bins - 1))
-
-        candidate_ids = spatial_index["grid"].get((ix, iy), [])
-
-        if not candidate_ids:
-            return z_egm, src_egm  # celda vacía — solo EGM directo
-
-    z_tri = None
-    src_tri = None
-
-    for idx in candidate_ids:
-        tri = triangles[idx]
-
-        if px < tri["xmin"] - 1e-10 or px > tri["xmax"] + 1e-10:
+    for idx, mast in enumerate(masts):
+        if idx not in results_obj:
             continue
 
-        if py < tri["ymin"] - 1e-10 or py > tri["ymax"] + 1e-10:
+        intervals = results_obj[idx].get("useful_intervals", [])
+
+        for k, interval in enumerate(intervals):
+            surface_data = fase6_build_partial_surface_for_interval_local(
+                mast=mast,
+                sphere_radius=sphere_radius,
+                interval=interval,
+                nr=nr,
+                nt=nt
+            )
+
+            if surface_data is None:
+                continue
+
+            X, Y, Z = surface_data
+
+            rec = fase6_make_patch_record(
+                name=f"Mástil solo M{idx} intervalo {k + 1}",
+                patch_type="single_mast",
+                X=X,
+                Y=Y,
+                Z=Z,
+                source="useful_single_mast_surface",
+                metadata={
+                    "mast_index": idx,
+                    "interval_index": k,
+                    "interval": interval,
+                }
+            )
+
+            if rec is not None:
+                patches.append(rec)
+
+    return patches
+
+
+def fase6_collect_mmq_surface_patches(
+    triangles,
+    sphere_radius,
+    registry_result,
+    ns=80,
+    nt=80
+):
+    patches = []
+    failed = []
+
+    for k, tri in enumerate(triangles):
+        if fase6_triangle_type(tri) != "M-M-Q":
             continue
 
-        z_here = _fase6_interpolate_z_in_triangle(
-            px,
-            py,
-            tri["A"],
-            tri["B"],
-            tri["C"],
-            tol=1e-9
+        nodes = list(tri.get("nodes", []))
+        mast_nodes = [n for n in nodes if fase6_node_type(n) == "M"]
+        q_nodes = [n for n in nodes if fase6_node_type(n) == "Q"]
+
+        if len(mast_nodes) != 2 or len(q_nodes) != 1:
+            failed.append({
+                "triangle_index": k,
+                "triangle": "-".join(fase6_node_label(n) for n in nodes),
+                "reason": "invalid_MMQ_node_count",
+            })
+            continue
+
+        m1, m2 = mast_nodes
+        q = q_nodes[0]
+
+        try:
+            patch = build_mmq_patch_from_boundaries(
+                m1=m1,
+                m2=m2,
+                q=q,
+                sphere_radius=sphere_radius,
+                registry_result=registry_result,
+                ns=ns,
+                nt=nt,
+                apply_xy_mask=True,
+                xy_mask_radius=1e-9,
+                xy_mask_verbose=False
+            )
+        except TypeError:
+            patch = build_mmq_patch_from_boundaries(
+                m1=m1,
+                m2=m2,
+                q=q,
+                sphere_radius=sphere_radius,
+                registry_result=registry_result,
+                ns=ns,
+                nt=nt,
+                apply_xy_mask=True,
+                xy_mask_radius=1e-9
+            )
+
+        if patch is None:
+            failed.append({
+                "triangle_index": k,
+                "triangle": "-".join(fase6_node_label(n) for n in nodes),
+                "reason": "patch_none",
+            })
+            continue
+
+        try:
+            X, Y, Z, C, L, R, top_name, top_kind, source = patch
+        except Exception:
+            failed.append({
+                "triangle_index": k,
+                "triangle": "-".join(fase6_node_label(n) for n in nodes),
+                "reason": "unexpected_patch_format",
+            })
+            continue
+
+        name = (
+            f"M-M-Q {fase6_node_label(m1)}-"
+            f"{fase6_node_label(m2)}-"
+            f"{fase6_node_label(q)}"
         )
 
-        if z_here is None:
+        rec = fase6_make_patch_record(
+            name=name,
+            patch_type="M-M-Q",
+            X=X,
+            Y=Y,
+            Z=Z,
+            source=source,
+            metadata={
+                "triangle_index": k,
+                "top_name": top_name,
+                "top_kind": top_kind,
+                "nodes": [fase6_node_label(n) for n in nodes],
+            }
+        )
+
+        if rec is not None:
+            patches.append(rec)
+
+    return patches, failed
+
+
+def fase6_collect_mlike_surface_patches(
+    triangles,
+    tri_nodes,
+    sphere_radius,
+    registry_result,
+    guard_wire_inputs=None,
+    ns=80,
+    nt=80
+):
+    """
+    Reconstruye las superficies M-like con la misma lógica de FASE 5B,
+    incluyendo subdivisiones locales por cruce de crestas.
+    """
+    patches = []
+    failed = []
+
+    registry_result_subdiv, tri_nodes_subdiv, subdivision_cases, subdivision_records = (
+        build_registry_result_with_subdivisions_fase6X(
+            tri_nodes=tri_nodes,
+            triangles=triangles,
+            registry_result=registry_result
+        )
+    )
+
+    surfaces_to_fill = get_all_fill_surfaces_fase6X(
+        triangles=triangles,
+        registry_result=registry_result_subdiv
+    )
+
+    for k, tri in enumerate(surfaces_to_fill):
+        if original_surface_should_be_skipped_fase6X(
+            tri=tri,
+            subdivision_cases=subdivision_cases
+        ):
             continue
 
-        if z_tri is None or z_here > z_tri:
-            z_tri = z_here
-            src_tri = tri["trace_name"]
+        tri_type = local_classify_mlike_surface_fase6X(tri)
 
-    # ── 3. Tomar el máximo entre triangulación y EGM directo ─────────────────
-    if z_tri is not None and z_egm is not None:
-        if z_tri >= z_egm:
-            return z_tri, src_tri
+        if tri_type not in {
+            "M-M-M",
+            "M-M-N",
+            "N-N-M",
+            "subtriangulated_M_like",
+        }:
+            continue
+
+        nodes_original = local_get_mlike_nodes_fase6X(tri)
+
+        if len(nodes_original) != 3:
+            failed.append({
+                "surface_index": k,
+                "triangle": "-".join(fase6_node_label(n) for n in tri.get("nodes", [])),
+                "type": tri_type,
+                "reason": "invalid_mlike_node_count",
+            })
+            continue
+
+        patch, nodes_used, reorder_info = build_patch_for_surface_fase6X(
+            nodes_original=nodes_original,
+            sphere_radius=sphere_radius,
+            guard_wire_inputs=guard_wire_inputs,
+            registry_result=registry_result_subdiv,
+            ns=ns,
+            nt=nt
+        )
+
+        if patch is None or patch.get("status", None) != "built":
+            failed.append({
+                "surface_index": k,
+                "triangle": "-".join(fase6_node_label(n) for n in tri.get("nodes", [])),
+                "type": tri_type,
+                "reason": "patch_none_or_not_built",
+                "status": None if patch is None else patch.get("status", None),
+            })
+            continue
+
+        X = patch["X"]
+        Y = patch["Y"]
+        Z = patch["Z"]
+
+        name = (
+            f"{tri_type} "
+            + "-".join(fase6_node_label(n) for n in nodes_used)
+        )
+
+        rec = fase6_make_patch_record(
+            name=name,
+            patch_type=tri_type,
+            X=X,
+            Y=Y,
+            Z=Z,
+            source=patch.get("surface_model", ""),
+            metadata={
+                "surface_index": k,
+                "classification": patch.get("classification", ""),
+                "source12": patch.get("source12", ""),
+                "source13": patch.get("source13", ""),
+                "source23": patch.get("source23", ""),
+                "reorder_info": reorder_info,
+                "virtual": bool(tri.get("virtual", False)),
+            }
+        )
+
+        if rec is not None:
+            patches.append(rec)
+
+    extra = {
+        "registry_result_subdiv": registry_result_subdiv,
+        "tri_nodes_subdiv": tri_nodes_subdiv,
+        "subdivision_cases": subdivision_cases,
+        "subdivision_records": subdivision_records,
+        "surfaces_to_fill": surfaces_to_fill,
+    }
+
+    return patches, failed, extra
+
+
+def fase6_collect_all_surface_patches():
+    patches = []
+
+    single_mast_patches = fase6_collect_single_mast_surface_patches(
+        masts=masts,
+        results_obj=results_fase6,
+        sphere_radius=S,
+        nr=FASE6_SINGLE_MAST_NR,
+        nt=FASE6_SINGLE_MAST_NT
+    )
+    patches.extend(single_mast_patches)
+
+    mmq_patches, mmq_failed = fase6_collect_mmq_surface_patches(
+        triangles=triangles_final_3B,
+        sphere_radius=S,
+        registry_result=resultado_crestas_final,
+        ns=FASE6_MMQ_NS,
+        nt=FASE6_MMQ_NT
+    )
+    patches.extend(mmq_patches)
+
+    mlike_patches, mlike_failed, mlike_extra = fase6_collect_mlike_surface_patches(
+        triangles=triangles_final_3B,
+        tri_nodes=tri_nodes_final_3B,
+        sphere_radius=S,
+        registry_result=resultado_crestas_final,
+        guard_wire_inputs=guard_wire_inputs_fase6,
+        ns=FASE6_MLIKE_NS,
+        nt=FASE6_MLIKE_NT
+    )
+    patches.extend(mlike_patches)
+
+    summary = {
+        "single_mast_count": len(single_mast_patches),
+        "mmq_count": len(mmq_patches),
+        "mlike_count": len(mlike_patches),
+        "total_count": len(patches),
+        "mmq_failed": mmq_failed,
+        "mlike_failed": mlike_failed,
+        "mlike_extra": mlike_extra,
+    }
+
+    return patches, summary
+
+
+# =========================================================
+# 4) INTERPOLADORES z = f(x, y) PARA CADA SUPERFICIE
+# =========================================================
+
+def fase6_grid_surface_to_interpolator(patch, area_tol=1e-12):
+    X = patch["X"]
+    Y = patch["Y"]
+    Z = patch["Z"]
+
+    if X.ndim != 2 or Y.ndim != 2 or Z.ndim != 2:
+        return None
+
+    rows, cols = X.shape
+
+    finite = np.isfinite(X) & np.isfinite(Y) & np.isfinite(Z)
+
+    old_to_new = {}
+    vx = []
+    vy = []
+    vz = []
+
+    # Comprimir nodos repetidos en XY. Si un mismo XY aparece más de una vez,
+    # se conserva el mayor Z porque la verificación usa envolvente superior.
+    for i in range(rows):
+        for j in range(cols):
+            if not finite[i, j]:
+                continue
+
+            key = (round(float(X[i, j]), 10), round(float(Y[i, j]), 10))
+            z_val = float(Z[i, j])
+
+            if key in old_to_new:
+                idx_new = old_to_new[key]
+                if z_val > vz[idx_new]:
+                    vz[idx_new] = z_val
+            else:
+                idx_new = len(vx)
+                old_to_new[key] = idx_new
+                vx.append(float(X[i, j]))
+                vy.append(float(Y[i, j]))
+                vz.append(z_val)
+
+    if len(vx) < 3:
+        return None
+
+    triangles = []
+
+    def get_idx(i, j):
+        if not finite[i, j]:
+            return None
+        key = (round(float(X[i, j]), 10), round(float(Y[i, j]), 10))
+        return old_to_new.get(key, None)
+
+    def add_tri(a, b, c):
+        if a is None or b is None or c is None:
+            return
+
+        if len({a, b, c}) < 3:
+            return
+
+        p1 = (vx[a], vy[a])
+        p2 = (vx[b], vy[b])
+        p3 = (vx[c], vy[c])
+
+        area2 = abs(fase6_area2_xy(p1, p2, p3))
+
+        if area2 <= area_tol:
+            return
+
+        triangles.append([a, b, c])
+
+    for i in range(rows - 1):
+        for j in range(cols - 1):
+            p00 = get_idx(i, j)
+            p10 = get_idx(i + 1, j)
+            p11 = get_idx(i + 1, j + 1)
+            p01 = get_idx(i, j + 1)
+
+            # Dos triángulos por celda de la malla.
+            add_tri(p00, p10, p11)
+            add_tri(p00, p11, p01)
+
+    if len(triangles) == 0:
+        return None
+
+    vx = np.asarray(vx, dtype=float)
+    vy = np.asarray(vy, dtype=float)
+    vz = np.asarray(vz, dtype=float)
+    triangles = np.asarray(triangles, dtype=int)
+
+    try:
+        triang = mtri.Triangulation(vx, vy, triangles=triangles)
+        interp = mtri.LinearTriInterpolator(triang, vz)
+    except Exception:
+        return None
+
+    bbox = fase6_surface_bbox(X, Y, margin=1e-8)
+
+    if bbox is None:
+        return None
+
+    return {
+        "name": patch["name"],
+        "type": patch["type"],
+        "source": patch["source"],
+        "bbox": bbox,
+        "triangulation": triang,
+        "interpolator": interp,
+        "n_vertices": int(len(vx)),
+        "n_triangles": int(len(triangles)),
+    }
+
+
+def fase6_build_surface_interpolators(surface_patches):
+    interpolators = []
+    failed = []
+
+    for patch in surface_patches:
+        item = fase6_grid_surface_to_interpolator(
+            patch=patch,
+            area_tol=FASE6_AREA_TOL
+        )
+
+        if item is None:
+            failed.append({
+                "name": patch.get("name", "?"),
+                "type": patch.get("type", "?"),
+                "source": patch.get("source", "?"),
+                "reason": "interpolator_not_created",
+            })
         else:
-            return z_egm, src_egm
-    elif z_tri is not None:
-        return z_tri, src_tri
-    elif z_egm is not None:
-        return z_egm, src_egm
-    else:
-        return None, None
+            interpolators.append(item)
+
+    return interpolators, failed
+
+
+def fase6_evaluate_layer_height(points_xyz, surface_interpolators):
+    """
+    Devuelve z_capa para cada punto usando la mayor altura de todas las
+    superficies que cubren su coordenada (x, y).
+    """
+    pts = np.asarray(points_xyz, dtype=float)
+    xq = pts[:, 0]
+    yq = pts[:, 1]
+
+    z_layer = np.full(len(pts), np.nan, dtype=float)
+    layer_source = np.full(len(pts), "", dtype=object)
+    layer_type = np.full(len(pts), "", dtype=object)
+
+    for surf in surface_interpolators:
+        bbox = surf["bbox"]
+
+        candidates = np.where(
+            (xq >= bbox["xmin"]) &
+            (xq <= bbox["xmax"]) &
+            (yq >= bbox["ymin"]) &
+            (yq <= bbox["ymax"])
+        )[0]
+
+        if len(candidates) == 0:
+            continue
+
+        try:
+            zi_ma = np.ma.asarray(
+                surf["interpolator"](xq[candidates], yq[candidates])
+            )
+        except Exception:
+            continue
+
+        zi = zi_ma.filled(np.nan)
+        valid_local = np.isfinite(zi)
+
+        if hasattr(zi_ma, "mask"):
+            valid_local = valid_local & (~np.ma.getmaskarray(zi_ma))
+
+        if not np.any(valid_local):
+            continue
+
+        idx_global = candidates[valid_local]
+        z_values = zi[valid_local]
+
+        update = (
+            np.isnan(z_layer[idx_global]) |
+            (z_values > z_layer[idx_global])
+        )
+
+        idx_update = idx_global[update]
+
+        z_layer[idx_update] = z_values[update]
+        layer_source[idx_update] = surf["name"]
+        layer_type[idx_update] = surf["type"]
+
+    return z_layer, layer_source, layer_type
 
 
 # =========================================================
-# 4) MUESTREO DE EQUIPOS / CUBOS
+# 5) NUBE VOLUMÉTRICA DEL EQUIPO
 # =========================================================
 
-def normalize_cube_record_fase6(cube, idx):
-    """
-    Acepta cube_inputs como diccionarios tipo:
-      {"name", "x", "y", "z", "dx", "dy", "dz"}
-    """
-    name = str(cube.get("name", f"Equipo {idx + 1}"))
+def fase6_axis_points(vmin, length, spacing):
+    vmin = float(vmin)
+    vmax = float(vmin + length)
 
+    if length <= 0:
+        return np.array([vmin], dtype=float)
+
+    n = int(np.ceil(float(length) / float(spacing))) + 1
+    return np.linspace(vmin, vmax, n)
+
+
+def fase6_build_equipment_point_cloud(cube, spacing=0.25):
+    """
+    Construye una nube volumétrica de puntos para un equipo rectangular.
+    """
+    name = str(cube.get("name", "Equipo"))
+
+    xs = fase6_axis_points(cube["x"], cube["dx"], spacing)
+    ys = fase6_axis_points(cube["y"], cube["dy"], spacing)
+    zs = fase6_axis_points(cube.get("z", 0.0), cube["dz"], spacing)
+
+    Xg, Yg, Zg = np.meshgrid(xs, ys, zs, indexing="xy")
+
+    pts = np.column_stack([
+        Xg.ravel(),
+        Yg.ravel(),
+        Zg.ravel(),
+    ])
+
+    return {
+        "name": name,
+        "points": pts,
+        "nx": int(len(xs)),
+        "ny": int(len(ys)),
+        "nz": int(len(zs)),
+        "n_points": int(len(pts)),
+        "x_range": (float(xs.min()), float(xs.max())),
+        "y_range": (float(ys.min()), float(ys.max())),
+        "z_range": (float(zs.min()), float(zs.max())),
+        "spacing": float(spacing),
+    }
+
+
+def fase6_verify_equipment_cloud(equipment_cloud, surface_interpolators, z_tol=1e-6):
+    pts = equipment_cloud["points"]
+
+    z_layer, layer_source, layer_type = fase6_evaluate_layer_height(
+        points_xyz=pts,
+        surface_interpolators=surface_interpolators
+    )
+
+    covered_xy = np.isfinite(z_layer)
+    protected = covered_xy & (pts[:, 2] <= z_layer + z_tol)
+
+    total = int(len(pts))
+    n_protected = int(np.count_nonzero(protected))
+    n_unprotected = int(total - n_protected)
+    n_no_layer = int(np.count_nonzero(~covered_xy))
+
+    pct = 100.0 * n_protected / total if total > 0 else 0.0
+    pct_unprotected = 100.0 - pct if total > 0 else 0.0
+
+    result = {
+        "equipment_name": equipment_cloud["name"],
+        "total_points": total,
+        "protected_points": n_protected,
+        "unprotected_points": n_unprotected,
+        "points_without_layer_xy": n_no_layer,
+        "protected_percentage": pct,
+        "unprotected_percentage": pct_unprotected,
+        "nx": equipment_cloud["nx"],
+        "ny": equipment_cloud["ny"],
+        "nz": equipment_cloud["nz"],
+        "spacing": equipment_cloud["spacing"],
+        "x_min": equipment_cloud["x_range"][0],
+        "x_max": equipment_cloud["x_range"][1],
+        "y_min": equipment_cloud["y_range"][0],
+        "y_max": equipment_cloud["y_range"][1],
+        "z_min": equipment_cloud["z_range"][0],
+        "z_max": equipment_cloud["z_range"][1],
+    }
+
+    point_rows = {
+        "equipment": np.full(total, equipment_cloud["name"], dtype=object),
+        "x": pts[:, 0],
+        "y": pts[:, 1],
+        "z_equipment": pts[:, 2],
+        "z_layer": z_layer,
+        "covered_xy": covered_xy,
+        "protected": protected,
+        "layer_type": layer_type,
+        "layer_source": layer_source,
+    }
+
+    return result, point_rows
+
+
+# =========================================================
+# 6) VISUALIZACIÓN DE RESULTADOS
+# =========================================================
+
+def fase6_sample_indices(mask, max_count, seed=6):
+    idx = np.where(mask)[0]
+
+    if len(idx) <= max_count:
+        return idx
+
+    rng = np.random.default_rng(seed)
+    return np.sort(rng.choice(idx, size=max_count, replace=False))
+
+
+def fase6_cube_vertices_and_faces(cube):
+    """
+    Devuelve vértices, caras triangulares y aristas de un equipo rectangular.
+
+    El equipo se interpreta igual que en cube_inputs:
+      - x, y, z  : esquina mínima
+      - dx, dy, dz: dimensiones del prisma
+    """
     x0 = float(cube["x"])
     y0 = float(cube["y"])
     z0 = float(cube.get("z", 0.0))
 
-    dx = float(cube["dx"])
-    dy = float(cube["dy"])
-    dz = float(cube["dz"])
+    x1 = x0 + float(cube["dx"])
+    y1 = y0 + float(cube["dy"])
+    z1 = z0 + float(cube["dz"])
 
-    if dx <= 0 or dy <= 0 or dz <= 0:
-        raise ValueError(
-            f"El equipo '{name}' tiene dimensiones no válidas: "
-            f"dx={dx}, dy={dy}, dz={dz}."
-        )
-
-    return {
-        "name": name,
-        "x0": x0,
-        "x1": x0 + dx,
-        "y0": y0,
-        "y1": y0 + dy,
-        "z0": z0,
-        "z1": z0 + dz,
-        "dx": dx,
-        "dy": dy,
-        "dz": dz,
-    }
-
-
-def sample_cube_exposed_surface_fase6(cube):
-    """
-    Genera puntos ponderados por área sobre la superficie expuesta del cubo:
-      - cara superior;
-      - caras laterales.
-    """
-    x0, x1 = cube["x0"], cube["x1"]
-    y0, y1 = cube["y0"], cube["y1"]
-    z0, z1 = cube["z0"], cube["z1"]
-
-    dx, dy, dz = cube["dx"], cube["dy"], cube["dz"]
-
-    samples = []
-
-    # Cara superior: z = z1
-    xs = np.linspace(x0, x1, FASE6_TOP_NX)
-    ys = np.linspace(y0, y1, FASE6_TOP_NY)
-    area_top = dx * dy
-    w_top = area_top / max(1, FASE6_TOP_NX * FASE6_TOP_NY)
-
-    for x in xs:
-        for y in ys:
-            samples.append({
-                "x": float(x),
-                "y": float(y),
-                "z": float(z1),
-                "face": "superior",
-                "weight": float(w_top),
-            })
-
-    # Caras x = x0 y x = x1
-    ys_side = np.linspace(y0, y1, FASE6_SIDE_N_ALONG)
-    zs_side = np.linspace(z0, z1, FASE6_SIDE_NZ)
-    area_x_side = dy * dz
-    w_x_side = area_x_side / max(1, FASE6_SIDE_N_ALONG * FASE6_SIDE_NZ)
-
-    for x_const, face_name in [(x0, "lateral_x_min"), (x1, "lateral_x_max")]:
-        for y in ys_side:
-            for z in zs_side:
-                samples.append({
-                    "x": float(x_const),
-                    "y": float(y),
-                    "z": float(z),
-                    "face": face_name,
-                    "weight": float(w_x_side),
-                })
-
-    # Caras y = y0 y y = y1
-    xs_side = np.linspace(x0, x1, FASE6_SIDE_N_ALONG)
-    area_y_side = dx * dz
-    w_y_side = area_y_side / max(1, FASE6_SIDE_N_ALONG * FASE6_SIDE_NZ)
-
-    for y_const, face_name in [(y0, "lateral_y_min"), (y1, "lateral_y_max")]:
-        for x in xs_side:
-            for z in zs_side:
-                samples.append({
-                    "x": float(x),
-                    "y": float(y_const),
-                    "z": float(z),
-                    "face": face_name,
-                    "weight": float(w_y_side),
-                })
-
-    return samples
-
-
-def verify_cube_shielding_fase6(cube, triangles, spatial_index):
-    samples = sample_cube_exposed_surface_fase6(cube)
-
-    protected_weight = 0.0
-    total_weight = 0.0
-
-    protected_count = 0
-    total_count = 0
-
-    face_stats = {}
-
-    protected_points = []
-    unprotected_points = []
-
-    max_margin = None
-    min_margin = None
-
-    for sample in samples:
-        x = sample["x"]
-        y = sample["y"]
-        z = sample["z"]
-        face = sample["face"]
-        weight = sample["weight"]
-
-        z_shield, source = query_shield_height_fase6(
-            x,
-            y,
-            triangles,
-            spatial_index
-        )
-
-        if z_shield is None:
-            is_protected = False
-            margin = None
-        else:
-            margin = float(z_shield - z)
-            is_protected = z <= z_shield + FASE6_VERTICAL_TOL
-
-            if max_margin is None or margin > max_margin:
-                max_margin = margin
-
-            if min_margin is None or margin < min_margin:
-                min_margin = margin
-
-        total_weight += weight
-        total_count += 1
-
-        if face not in face_stats:
-            face_stats[face] = {
-                "protected_weight": 0.0,
-                "total_weight": 0.0,
-                "protected_count": 0,
-                "total_count": 0,
-            }
-
-        face_stats[face]["total_weight"] += weight
-        face_stats[face]["total_count"] += 1
-
-        point_record = {
-            "x": x,
-            "y": y,
-            "z": z,
-            "z_shield": z_shield,
-            "margin": margin,
-            "face": face,
-            "source": source,
-            "protected": is_protected,
-        }
-
-        if is_protected:
-            protected_weight += weight
-            protected_count += 1
-            face_stats[face]["protected_weight"] += weight
-            face_stats[face]["protected_count"] += 1
-            protected_points.append(point_record)
-        else:
-            unprotected_points.append(point_record)
-
-    percent_area = 100.0 * protected_weight / total_weight if total_weight > 0 else 0.0
-    percent_points = 100.0 * protected_count / total_count if total_count > 0 else 0.0
-
-    face_percentages = {}
-
-    for face, stats in face_stats.items():
-        if stats["total_weight"] > 0:
-            p_face = 100.0 * stats["protected_weight"] / stats["total_weight"]
-        else:
-            p_face = 0.0
-
-        face_percentages[face] = {
-            "percent_area": p_face,
-            "protected_count": stats["protected_count"],
-            "total_count": stats["total_count"],
-        }
-
-    return {
-        "cube": cube,
-        "percent_area": percent_area,
-        "percent_points": percent_points,
-        "protected_weight": protected_weight,
-        "total_weight": total_weight,
-        "protected_count": protected_count,
-        "total_count": total_count,
-        "face_percentages": face_percentages,
-        "protected_points": protected_points,
-        "unprotected_points": unprotected_points,
-        "min_margin": min_margin,
-        "max_margin": max_margin,
-        "is_ok": percent_area >= FASE6_OK_PERCENT_THRESHOLD,
-    }
-
-
-# =========================================================
-# 5) DIBUJO DE EQUIPOS Y PUNTOS DE VERIFICACIÓN
-# =========================================================
-
-def add_cube_to_fig_fase6(fig, cube, percent_area, is_ok):
-    """
-    Dibuja el equipo sobre la figura final de FASE 6X.
-
-    Visual neutral:
-      - El cuerpo del equipo se dibuja gris/transparente.
-      - Las aristas se muestran en color neutro sin diferenciación por estado.
-    """
-    x0, x1 = cube["x0"], cube["x1"]
-    y0, y1 = cube["y0"], cube["y1"]
-    z0, z1 = cube["z0"], cube["z1"]
-
-    V = np.array([
-        [x0, y0, z0],
-        [x1, y0, z0],
-        [x1, y1, z0],
-        [x0, y1, z0],
-        [x0, y0, z1],
-        [x1, y0, z1],
-        [x1, y1, z1],
-        [x0, y1, z1],
+    vertices = np.asarray([
+        [x0, y0, z0],  # 0
+        [x1, y0, z0],  # 1
+        [x1, y1, z0],  # 2
+        [x0, y1, z0],  # 3
+        [x0, y0, z1],  # 4
+        [x1, y0, z1],  # 5
+        [x1, y1, z1],  # 6
+        [x0, y1, z1],  # 7
     ], dtype=float)
 
-    # 12 triángulos para las 6 caras.
-    I = [0, 0, 4, 4, 0, 0, 1, 1, 2, 2, 3, 3]
-    J = [1, 2, 5, 6, 1, 5, 2, 6, 3, 7, 0, 4]
-    K = [2, 3, 6, 7, 5, 4, 6, 5, 7, 6, 4, 7]
+    # Cada cara rectangular se divide en dos triángulos.
+    faces = np.asarray([
+        [0, 2, 1], [0, 3, 2],  # base
+        [4, 5, 6], [4, 6, 7],  # tapa superior
+        [0, 1, 5], [0, 5, 4],  # frente y=y0
+        [1, 2, 6], [1, 6, 5],  # lateral x=x1
+        [2, 3, 7], [2, 7, 6],  # fondo y=y1
+        [3, 0, 4], [3, 4, 7],  # lateral x=x0
+    ], dtype=int)
 
-    edge_color = FASE6_OK_EDGE_COLOR
-    edge_width = FASE6_OK_EDGE_WIDTH
-
-    # Cuerpo del equipo:
-    # Siempre gris/transparente para que no tape la visualización de 6X.
-    fig.add_trace(go.Mesh3d(
-        x=V[:, 0],
-        y=V[:, 1],
-        z=V[:, 2],
-        i=I,
-        j=J,
-        k=K,
-        color=FASE6_EQUIPMENT_MESH_COLOR,
-        opacity=FASE6_EQUIPMENT_MESH_OPACITY,
-        name=cube['name'],
-        hovertemplate=(
-            cube["name"]
-            + "<extra></extra>"
-        )
-    ))
-
-    # Aristas del cubo.
     edges = [
         (0, 1), (1, 2), (2, 3), (3, 0),
         (4, 5), (5, 6), (6, 7), (7, 4),
         (0, 4), (1, 5), (2, 6), (3, 7),
     ]
 
-    xe, ye, ze = [], [], []
-
-    for a, b in edges:
-        xe += [V[a, 0], V[b, 0], None]
-        ye += [V[a, 1], V[b, 1], None]
-        ze += [V[a, 2], V[b, 2], None]
-
-    # Aristas principales del equipo.
-    fig.add_trace(go.Scatter3d(
-        x=xe,
-        y=ye,
-        z=ze,
-        mode="lines",
-        line=dict(color=edge_color, width=edge_width),
-        name=f"Aristas {cube['name']}",
-        hoverinfo="skip"
-    ))
-
-    return fig
+    return vertices, faces, edges
 
 
-def apply_failed_equipment_pulse_fase6(fig, failed_edge_trace_indices):
+def fase6_add_equipment_solids_to_fig(
+    fig,
+    cubes,
+    opacity=0.18,
+    plot_edges=True
+):
     """
-    Agrega animación tipo pulso a los bordes de equipos que NO cumplen.
+    Agrega los equipos como prismas 3D translúcidos a la figura.
 
-    Nota:
-      En Plotly/Colab normalmente se activa con el botón:
-          ▶ Pulso bordes rojos
-
-      La animación no cambia el cálculo, solo la visualización.
+    Esto no afecta el cálculo del porcentaje: la verificación sigue usando
+    TODOS los puntos volumétricos generados en fase6_build_equipment_point_cloud.
     """
-    if not FASE6_ENABLE_FAILED_EDGE_PULSE:
-        return fig
+    for idx_cube, cube in enumerate(cubes):
+        name = str(cube.get("name", f"Equipo {idx_cube + 1}"))
+        vertices, faces, edges = fase6_cube_vertices_and_faces(cube)
 
-    if not failed_edge_trace_indices:
-        return fig
-
-    width_min = FASE6_FAILED_EDGE_WIDTH_MIN
-    width_max = FASE6_FAILED_EDGE_WIDTH_MAX
-    width_mid = int(0.5 * (width_min + width_max))
-
-    # Se repite el ciclo varias veces para que el pulso sea visible durante más tiempo.
-    base_cycle = [
-        ("pulso_bajo",   width_min, "rgba(255,0,0,0.45)"),
-        ("pulso_medio",  width_mid, "rgba(255,0,0,0.75)"),
-        ("pulso_alto",   width_max, "rgba(255,0,0,1.00)"),
-        ("pulso_medio2", width_mid, "rgba(255,0,0,0.75)"),
-    ]
-
-    frames = []
-
-    for repeat_idx in range(8):
-        for frame_name, width, color in base_cycle:
-            frames.append(go.Frame(
-                name=f"{frame_name}_{repeat_idx}",
-                traces=failed_edge_trace_indices,
-                data=[
-                    go.Scatter3d(
-                        line=dict(
-                            color=color,
-                            width=width
-                        )
-                    )
-                    for _ in failed_edge_trace_indices
-                ]
-            ))
-
-    fig.frames = frames
-
-    # Mantiene cualquier otro menú que ya tuviera la figura.
-    existing_menus = list(fig.layout.updatemenus) if fig.layout.updatemenus else []
-
-    pulse_menu = dict(
-        type="buttons",
-        showactive=False,
-        x=0.02,
-        y=1.08,
-        xanchor="left",
-        yanchor="top",
-        buttons=[
-            dict(
-                label="▶ Pulso bordes rojos",
-                method="animate",
-                args=[
-                    None,
-                    dict(
-                        frame=dict(duration=230, redraw=True),
-                        transition=dict(duration=80),
-                        fromcurrent=True,
-                        mode="immediate"
-                    )
-                ]
+        fig.add_trace(go.Mesh3d(
+            x=vertices[:, 0],
+            y=vertices[:, 1],
+            z=vertices[:, 2],
+            i=faces[:, 0],
+            j=faces[:, 1],
+            k=faces[:, 2],
+            opacity=opacity,
+            color="royalblue",
+            name=f"Volumen del equipo - {name}",
+            hovertemplate=(
+                f"{name}<br>"
+                "Volumen del equipo<br>"
+                f"x=[{float(cube['x']):.3f}, {float(cube['x']) + float(cube['dx']):.3f}]<br>"
+                f"y=[{float(cube['y']):.3f}, {float(cube['y']) + float(cube['dy']):.3f}]<br>"
+                f"z=[{float(cube.get('z', 0.0)):.3f}, {float(cube.get('z', 0.0)) + float(cube['dz']):.3f}]"
+                "<extra></extra>"
             ),
-            dict(
-                label="⏸ Pausar",
-                method="animate",
-                args=[
-                    [None],
-                    dict(
-                        frame=dict(duration=0, redraw=False),
-                        mode="immediate"
-                    )
-                ]
-            )
-        ]
+            showscale=False
+        ))
+
+        if not plot_edges:
+            continue
+
+        xe, ye, ze = [], [], []
+        for a, b in edges:
+            xe.extend([vertices[a, 0], vertices[b, 0], None])
+            ye.extend([vertices[a, 1], vertices[b, 1], None])
+            ze.extend([vertices[a, 2], vertices[b, 2], None])
+
+        fig.add_trace(go.Scatter3d(
+            x=xe,
+            y=ye,
+            z=ze,
+            mode="lines",
+            line=dict(color="black", width=4),
+            name=f"Aristas del equipo - {name}",
+            hoverinfo="skip",
+            showlegend=True
+        ))
+
+    return fig
+
+
+def fase6_add_equipment_verification_points_to_fig(
+    fig,
+    point_rows,
+    max_points_per_class=4000
+):
+    pts_x = np.asarray(point_rows["x"])
+    pts_y = np.asarray(point_rows["y"])
+    pts_z = np.asarray(point_rows["z_equipment"])
+    z_layer = np.asarray(point_rows["z_layer"])
+    protected = np.asarray(point_rows["protected"], dtype=bool)
+    covered_xy = np.asarray(point_rows["covered_xy"], dtype=bool)
+    equipment = np.asarray(point_rows["equipment"], dtype=object)
+
+    protected_idx = fase6_sample_indices(
+        protected,
+        max_points_per_class,
+        seed=6
     )
 
-    fig.update_layout(updatemenus=existing_menus + [pulse_menu])
+    unprotected_idx = fase6_sample_indices(
+        ~protected,
+        max_points_per_class,
+        seed=7
+    )
+
+    if len(protected_idx) > 0:
+        fig.add_trace(go.Scatter3d(
+            x=pts_x[protected_idx],
+            y=pts_y[protected_idx],
+            z=pts_z[protected_idx],
+            mode="markers",
+            marker=dict(size=3, color="green", opacity=0.55),
+            name="Puntos del equipo apantallados",
+            hovertemplate=(
+                "Equipo: %{customdata[0]}<br>"
+                "x=%{x:.3f}<br>"
+                "y=%{y:.3f}<br>"
+                "z equipo=%{z:.3f}<br>"
+                "z capa=%{customdata[1]:.3f}<br>"
+                "Estado=apantallado<extra></extra>"
+            ),
+            customdata=np.column_stack([
+                equipment[protected_idx],
+                z_layer[protected_idx],
+            ])
+        ))
+
+    if len(unprotected_idx) > 0:
+        fig.add_trace(go.Scatter3d(
+            x=pts_x[unprotected_idx],
+            y=pts_y[unprotected_idx],
+            z=pts_z[unprotected_idx],
+            mode="markers",
+            marker=dict(size=4, color="red", opacity=0.85),
+            name="Puntos del equipo NO apantallados",
+            hovertemplate=(
+                "Equipo: %{customdata[0]}<br>"
+                "x=%{x:.3f}<br>"
+                "y=%{y:.3f}<br>"
+                "z equipo=%{z:.3f}<br>"
+                "z capa=%{customdata[1]:.3f}<br>"
+                "Con capa en XY=%{customdata[2]}<br>"
+                "Estado=NO apantallado<extra></extra>"
+            ),
+            customdata=np.column_stack([
+                equipment[unprotected_idx],
+                z_layer[unprotected_idx],
+                covered_xy[unprotected_idx],
+            ])
+        ))
 
     return fig
 
 
-def add_sample_points_to_fig_fase6(fig, record):
-    protected_points = record["protected_points"]
-    unprotected_points = record["unprotected_points"]
+def fase6_make_verification_figure(point_rows):
+    if (
+        FASE6_USE_EXISTING_FINAL_FIG
+        and "fig_superficies_mmq_mmm" in globals()
+        and fig_superficies_mmq_mmm is not None
+    ):
+        fig = copy.deepcopy(fig_superficies_mmq_mmm)
+    elif (
+        FASE6_USE_EXISTING_FINAL_FIG
+        and "fig_17" in globals()
+        and fig_17 is not None
+    ):
+        fig = copy.deepcopy(fig_17)
+    else:
+        fig = go.Figure()
 
-    if FASE6_SHOW_ALL_SAMPLE_POINTS and protected_points:
-        fig.add_trace(go.Scatter3d(
-            x=[p["x"] for p in protected_points],
-            y=[p["y"] for p in protected_points],
-            z=[p["z"] for p in protected_points],
-            mode="markers",
-            marker=dict(size=2, color="limegreen", opacity=0.45),
-            name=f"Puntos protegidos {record['cube']['name']}",
-            hovertemplate=(
-                "Protegido<br>"
-                "x=%{x:.3f}<br>"
-                "y=%{y:.3f}<br>"
-                "z=%{z:.3f}<extra></extra>"
-            )
-        ))
+    if FASE6_PLOT_EQUIPMENT_SOLID:
+        fig = fase6_add_equipment_solids_to_fig(
+            fig=fig,
+            cubes=cube_inputs,
+            opacity=FASE6_EQUIPMENT_SOLID_OPACITY,
+            plot_edges=FASE6_PLOT_EQUIPMENT_EDGES
+        )
 
-    if FASE6_SHOW_UNPROTECTED_POINTS and unprotected_points:
-        fig.add_trace(go.Scatter3d(
-            x=[p["x"] for p in unprotected_points],
-            y=[p["y"] for p in unprotected_points],
-            z=[p["z"] for p in unprotected_points],
-            mode="markers",
-            marker=dict(size=4, color="red", symbol="x", opacity=0.90),
-            name=f"Puntos NO protegidos {record['cube']['name']}",
-            hovertemplate=(
-                "NO protegido<br>"
-                "x=%{x:.3f}<br>"
-                "y=%{y:.3f}<br>"
-                "z=%{z:.3f}<extra></extra>"
-            )
-        ))
+# No se dibujan los puntos verdes/rojos de verificación.
+# La verificación volumétrica sigue calculándose igual;
+# solo se ocultan los puntos en la figura.
+# fig = fase6_add_equipment_verification_points_to_fig(
+#     fig=fig,
+#     point_rows=point_rows,
+#     max_points_per_class=FASE6_MAX_POINTS_TO_PLOT_PER_CLASS
+# 
+
+    fig.update_layout(
+        title=(
+            "FASE 6: verificación volumétrica de apantallamiento "
+            "del equipo"
+        ),
+        scene=dict(
+            xaxis_title="X",
+            yaxis_title="Y",
+            zaxis_title="Z",
+            aspectmode="data"
+        ),
+        showlegend=True,
+        height=900
+    )
 
     return fig
 
 
 # =========================================================
-# 6) EJECUCIÓN PRINCIPAL
+# 7) EJECUCIÓN FASE 6
 # =========================================================
 
-fase6_shield_triangles, fase6_used_surfaces, fase6_skipped_surfaces = (
-    extract_shield_triangles_from_fig_fase6(fase6_base_fig)
+print("=========================================================")
+print("FASE 6 - VERIFICACIÓN DE APANTALLAMIENTO")
+print("=========================================================")
+print(f"Fuente de superficies de mástil solo: {results_source_fase6}")
+print(f"Separación de puntos del equipo     : {FASE6_POINT_SPACING}")
+print(f"Dibujar volumen sólido del equipo   : {FASE6_PLOT_EQUIPMENT_SOLID}")
+print("Reconstruyendo capa resultante...")
+print("=========================================================")
+
+fase6_surface_patches, fase6_surface_build_summary = fase6_collect_all_surface_patches()
+
+fase6_surface_interpolators, fase6_interpolator_failed = fase6_build_surface_interpolators(
+    surface_patches=fase6_surface_patches
 )
 
-if not fase6_shield_triangles:
+print("Superficies reconstruidas:")
+print(f"  Mástil solo : {fase6_surface_build_summary['single_mast_count']}")
+print(f"  M-M-Q       : {fase6_surface_build_summary['mmq_count']}")
+print(f"  M-like      : {fase6_surface_build_summary['mlike_count']}")
+print(f"  Total       : {fase6_surface_build_summary['total_count']}")
+print("")
+print("Interpoladores:")
+print(f"  Creados     : {len(fase6_surface_interpolators)}")
+print(f"  Fallidos    : {len(fase6_interpolator_failed)}")
+print("=========================================================")
+
+if len(fase6_surface_interpolators) == 0:
     raise RuntimeError(
-        "No se extrajeron triángulos de apantallamiento desde la figura final. "
-        "Revisa que la figura tenga trazas tipo go.Surface y que no hayan sido "
-        "clasificadas como suelo/plano z=0."
+        "No se pudo crear ningún interpolador de superficie. "
+        "Revisa que FASE 4 y FASE 5B estén generando parches válidos."
     )
 
-fase6_spatial_index = build_spatial_index_fase6(
-    fase6_shield_triangles,
-    n_bins=FASE6_SPATIAL_BINS
-)
+fase6_resultados_por_equipo = []
+fase6_all_point_rows = []
 
-fig_fase6_verificacion = copy.deepcopy(fase6_base_fig)
+for cube in cube_inputs:
+    cloud = fase6_build_equipment_point_cloud(
+        cube=cube,
+        spacing=FASE6_POINT_SPACING
+    )
+
+    summary, point_rows = fase6_verify_equipment_cloud(
+        equipment_cloud=cloud,
+        surface_interpolators=fase6_surface_interpolators,
+        z_tol=FASE6_Z_TOL
+    )
+
+    fase6_resultados_por_equipo.append(summary)
+    fase6_all_point_rows.append(point_rows)
+
+# Unir puntos de todos los equipos.
+if len(fase6_all_point_rows) == 0:
+    fase6_combined_point_rows = {
+        "equipment": np.asarray([], dtype=object),
+        "x": np.asarray([], dtype=float),
+        "y": np.asarray([], dtype=float),
+        "z_equipment": np.asarray([], dtype=float),
+        "z_layer": np.asarray([], dtype=float),
+        "covered_xy": np.asarray([], dtype=bool),
+        "protected": np.asarray([], dtype=bool),
+        "layer_type": np.asarray([], dtype=object),
+        "layer_source": np.asarray([], dtype=object),
+    }
+elif len(fase6_all_point_rows) == 1:
+    fase6_combined_point_rows = fase6_all_point_rows[0]
+else:
+    keys = fase6_all_point_rows[0].keys()
+    fase6_combined_point_rows = {
+        k: np.concatenate([rows[k] for rows in fase6_all_point_rows])
+        for k in keys
+    }
+
+if pd is not None:
+    fase6_equipment_summary_df = pd.DataFrame(fase6_resultados_por_equipo)
+    fase6_point_results_df = pd.DataFrame(fase6_combined_point_rows)
+else:
+    fase6_equipment_summary_df = fase6_resultados_por_equipo
+    fase6_point_results_df = fase6_combined_point_rows
+
+# -----------------------------------------------------------------------------
+# Salida compatible con la interfaz TerraShield y con el módulo de recomendaciones
+# -----------------------------------------------------------------------------
+# La interfaz existente espera `fase6_verification_records` con campos heredados:
+#   cube, is_ok, protected_count, total_count, min_margin, unprotected_points, etc.
+# No se modifica la lógica de recomendaciones; solo se le entrega la verificación
+# volumétrica correcta en el formato que ya consume.
+
+FASE6_MAX_CRITICAL_POINTS_FOR_API = 1200
+
+
+def fase6_float_or_none(value):
+    try:
+        value_f = float(value)
+    except Exception:
+        return None
+    if not np.isfinite(value_f):
+        return None
+    return value_f
+
+
+def fase6_make_legacy_verification_record(cube_input, summary, point_rows):
+    name = str(cube_input.get("name", summary.get("equipment_name", "Equipo")))
+
+    protected_mask = np.asarray(point_rows["protected"], dtype=bool)
+    unprotected_mask = ~protected_mask
+
+    z_layer = np.asarray(point_rows["z_layer"], dtype=float)
+    z_equipment = np.asarray(point_rows["z_equipment"], dtype=float)
+    margin = z_layer - z_equipment
+    finite_margin = margin[np.isfinite(margin)]
+
+    min_margin = float(np.min(finite_margin)) if finite_margin.size else None
+    max_margin = float(np.max(finite_margin)) if finite_margin.size else None
+
+    def _points_from_mask(mask, limit=None):
+        idx = np.where(mask)[0]
+        if limit is not None and len(idx) > limit:
+            # Muestreo determinístico para no inflar el JSON de la interfaz.
+            idx = fase6_sample_indices(mask, limit, seed=66)
+
+        pts = []
+        for ii in idx:
+            zl = fase6_float_or_none(point_rows["z_layer"][ii])
+            mg = fase6_float_or_none(margin[ii])
+            pts.append({
+                "x": float(point_rows["x"][ii]),
+                "y": float(point_rows["y"][ii]),
+                "z": float(point_rows["z_equipment"][ii]),
+                "z_shield": zl,
+                "z_layer": zl,
+                "margin": mg,
+                "source": str(point_rows["layer_source"][ii]),
+                "layer_type": str(point_rows["layer_type"][ii]),
+                "protected": bool(point_rows["protected"][ii]),
+            })
+        return pts
+
+    protected_count = int(summary["protected_points"])
+    total_count = int(summary["total_points"])
+    pct = float(summary["protected_percentage"])
+
+    return {
+        "cube": {
+            "name": name,
+            "x0": float(cube_input["x"]),
+            "x1": float(cube_input["x"]) + float(cube_input["dx"]),
+            "y0": float(cube_input["y"]),
+            "y1": float(cube_input["y"]) + float(cube_input["dy"]),
+            "z0": float(cube_input.get("z", 0.0)),
+            "z1": float(cube_input.get("z", 0.0)) + float(cube_input["dz"]),
+            "dx": float(cube_input["dx"]),
+            "dy": float(cube_input["dy"]),
+            "dz": float(cube_input["dz"]),
+        },
+        "is_ok": bool(pct >= 100.0 - 1e-9),
+        "percent_area": pct,
+        "percent_points": pct,
+        "protected_count": protected_count,
+        "total_count": total_count,
+        "protected_weight": float(protected_count),
+        "total_weight": float(total_count),
+        "min_margin": min_margin,
+        "max_margin": max_margin,
+        "points_without_layer_xy": int(summary.get("points_without_layer_xy", 0)),
+        "protected_points": _points_from_mask(protected_mask, limit=FASE6_MAX_CRITICAL_POINTS_FOR_API),
+        "unprotected_points": _points_from_mask(unprotected_mask, limit=FASE6_MAX_CRITICAL_POINTS_FOR_API),
+        "face_percentages": {},
+    }
+
 
 fase6_verification_records = []
-
-# Aquí se guardan las trazas de bordes rojos para aplicarles pulso.
-fase6_failed_edge_trace_indices = []
-
-for idx, cube_input in enumerate(cube_inputs):
-    cube = normalize_cube_record_fase6(cube_input, idx)
-
-    record = verify_cube_shielding_fase6(
-        cube=cube,
-        triangles=fase6_shield_triangles,
-        spatial_index=fase6_spatial_index
+for _cube_input, _summary, _point_rows in zip(
+    cube_inputs,
+    fase6_resultados_por_equipo,
+    fase6_all_point_rows,
+):
+    fase6_verification_records.append(
+        fase6_make_legacy_verification_record(_cube_input, _summary, _point_rows)
     )
 
-    fase6_verification_records.append(record)
-
-    fig_fase6_verificacion = add_cube_to_fig_fase6(
-        fig=fig_fase6_verificacion,
-        cube=cube,
-        percent_area=record["percent_area"],
-        is_ok=record["is_ok"]
-    )
-
-    fig_fase6_verificacion = add_sample_points_to_fig_fase6(
-        fig=fig_fase6_verificacion,
-        record=record
-    )
-
-# Resumen global ponderado por área de todos los equipos.
-total_weight_global = sum(r["total_weight"] for r in fase6_verification_records)
-protected_weight_global = sum(r["protected_weight"] for r in fase6_verification_records)
-
-if total_weight_global > 0:
-    global_percent_area = 100.0 * protected_weight_global / total_weight_global
-else:
-    global_percent_area = 0.0
-
+# Alias heredados para integraciones externas.
 fase6_verification_summary = {
-    "base_figure": fase6_base_fig_name,
-    "n_shield_triangles": len(fase6_shield_triangles),
-    "n_used_surfaces": len(fase6_used_surfaces),
-    "n_skipped_surfaces": len(fase6_skipped_surfaces),
-    "global_percent_area": global_percent_area,
+    "global_percent_area": (
+        100.0 * sum(r["protected_count"] for r in fase6_verification_records)
+        / max(1, sum(r["total_count"] for r in fase6_verification_records))
+    ),
     "n_equipments": len(fase6_verification_records),
-    "ok_threshold_percent": FASE6_OK_PERCENT_THRESHOLD,
+    "ok_threshold_percent": 100.0,
+    "verification_mode": "volumetric_point_cloud",
 }
 
-fig_fase6_verificacion.update_layout(
-    title=(
-        "FASE 6: Verificación de apantallamiento de equipos "
-        f"| Global = {global_percent_area:.2f}%"
-    ),
-    scene=dict(
-        xaxis_title="X",
-        yaxis_title="Y",
-        zaxis_title="Z",
-        aspectmode="data"
-    ),
-    height=950,
-    showlegend=True
-)
 
-fig_fase6_verificacion = apply_failed_equipment_pulse_fase6(
-    fig=fig_fase6_verificacion,
-    failed_edge_trace_indices=fase6_failed_edge_trace_indices
+print("")
+print("=========================================================")
+print("RESUMEN POR EQUIPO")
+print("=========================================================")
+
+if pd is not None:
+    display_cols = [
+        "equipment_name",
+        "total_points",
+        "protected_points",
+        "unprotected_points",
+        "points_without_layer_xy",
+        "protected_percentage",
+        "unprotected_percentage",
+        "spacing",
+        "nx",
+        "ny",
+        "nz",
+    ]
+
+    try:
+        if len(fase6_resultados_por_equipo) > 0:
+            display(fase6_equipment_summary_df[display_cols])
+        else:
+            print("No hay equipos definidos para verificar.")
+    except Exception:
+        if len(fase6_resultados_por_equipo) > 0:
+            print(fase6_equipment_summary_df[display_cols].to_string(index=False))
+        else:
+            print("No hay equipos definidos para verificar.")
+else:
+    for row in fase6_resultados_por_equipo:
+        print(row)
+
+print("=========================================================")
+
+for row in fase6_resultados_por_equipo:
+    print(
+        f"{row['equipment_name']}: "
+        f"{row['protected_percentage']:.2f}% apantallado "
+        f"({row['protected_points']} de {row['total_points']} puntos)."
+    )
+
+# Figura de verificación.
+fig_fase6_verificacion = fase6_make_verification_figure(
+    point_rows=fase6_combined_point_rows
 )
 
 fig_fase6_verificacion.show()
 
-# Alias útil: esta es la última gráfica 6X con los equipos y la verificación encima.
+print("=========================================================")
+print("Salidas disponibles:")
+print("  - fase6_surface_patches")
+print("  - fase6_surface_interpolators")
+print("  - fase6_point_results_df")
+print("  - fase6_equipment_summary_df")
+print("  - fase6_resultados_por_equipo")
+print("  - fig_fase6_verificacion")
+print("=========================================================")
+
 fig_superficies_mmq_mmm_con_equipos = fig_fase6_verificacion
 
-# Si de verdad quieres reemplazar visualmente la variable original, descomenta esta línea.
-# No lo dejo activo para evitar duplicar equipos si corres la celda varias veces.
-# fig_superficies_mmq_mmm = fig_fase6_verificacion
-
-
-# =========================================================
-# 7) REPORTE EN CONSOLA
-# =========================================================
-
-print("\n=========================================================")
-print("FASE 6 — VERIFICACIÓN DE APANTALLAMIENTO")
-print("=========================================================")
-print(f"Figura base usada                  : {fase6_base_fig_name}")
-print(f"Superficies de cubierta usadas      : {len(fase6_used_surfaces)}")
-print(f"Triángulos de cubierta generados    : {len(fase6_shield_triangles)}")
-print(f"Superficies descartadas             : {len(fase6_skipped_surfaces)}")
-print(f"Equipos verificados                 : {len(fase6_verification_records)}")
-print(f"Porcentaje global apantallado       : {global_percent_area:.2f}%")
-print("=========================================================")
-
-for record in fase6_verification_records:
-    cube = record["cube"]
-    status = "PROTEGIDO" if record["is_ok"] else "NO COMPLETAMENTE PROTEGIDO"
-
-    print(f"\n{cube['name']}")
-    print("-" * 55)
-    print(f"Estado                              : {status}")
-    print(f"Porcentaje por área expuesta         : {record['percent_area']:.2f}%")
-    print(f"Porcentaje por puntos                : {record['percent_points']:.2f}%")
-    print(f"Puntos protegidos / totales          : {record['protected_count']} / {record['total_count']}")
-
-    if record["min_margin"] is None:
-        print("Margen mínimo z_cubierta - z_equipo  : sin cubierta en todos los puntos")
-    else:
-        print(f"Margen mínimo z_cubierta - z_equipo  : {record['min_margin']:.6f}")
-        print(f"Margen máximo z_cubierta - z_equipo  : {record['max_margin']:.6f}")
-
-    print("Detalle por cara:")
-    for face, stats in record["face_percentages"].items():
-        print(
-            f"  - {face:14s}: "
-            f"{stats['percent_area']:8.2f}% "
-            f"({stats['protected_count']} / {stats['total_count']} puntos)"
-        )
-
-    if record["unprotected_points"]:
-        p = record["unprotected_points"][0]
-        print(
-            "Primer punto no protegido             : "
-            f"x={p['x']:.4f}, y={p['y']:.4f}, z={p['z']:.4f}, "
-            f"cara={p['face']}"
-        )
-
-
-# =========================================================
-# 8) TABLA RESUMEN OPCIONAL
-# =========================================================
-
-try:
-    import pandas as pd
-
-    fase6_rows = []
-
-    for record in fase6_verification_records:
-        cube = record["cube"]
-        area_total = record["total_weight"]
-        area_protegida = record["protected_weight"]
-        area_no_protegida = area_total - area_protegida
-
-        porcentaje_area_protegida = record["percent_area"]
-        porcentaje_area_no_protegida = 100.0 - porcentaje_area_protegida
-
-        porcentaje_puntos_protegidos = record["percent_points"]
-        porcentaje_puntos_no_protegidos = 100.0 - porcentaje_puntos_protegidos
-
-        fase6_rows.append({
-            "Equipo": cube["name"],
-            "Estado": "Protegido" if record["is_ok"] else "No completamente protegido",
-
-            "Área evaluada total": area_total,
-            "Área protegida": area_protegida,
-            "Área no protegida": area_no_protegida,
-
-            "% área protegida": porcentaje_area_protegida,
-            "% área no protegida": porcentaje_area_no_protegida,
-
-            "% puntos protegidos": porcentaje_puntos_protegidos,
-            "% puntos no protegidos": porcentaje_puntos_no_protegidos,
-
-            "Puntos protegidos": record["protected_count"],
-            "Puntos no protegidos": record["total_count"] - record["protected_count"],
-            "Puntos totales": record["total_count"],
-
-            "Margen mínimo": record["min_margin"],
-            "Margen máximo": record["max_margin"],
-        })
-
-    fase6_verification_dataframe = pd.DataFrame(fase6_rows)
-
-    display(fase6_verification_dataframe)
-
-except Exception:
-    fase6_verification_dataframe = None
-    print("\nNo se pudo crear DataFrame de resumen. El reporte impreso sigue disponible.")
+# Alias para que el wrapper Flask use la figura con equipos y puntos.
+fig_superficies_mmq_mmm_con_equipos = fig_fase6_verificacion
