@@ -681,9 +681,11 @@ function apantRenderVerif(verif) {
     : `${nTotal - nOk} de ${nTotal} equipo${nTotal - nOk !== 1 ? 's' : ''} presenta${nTotal - nOk === 1 ? '' : 'n'} puntos fuera de la capa resultante.`;
 
   const rows = verif.map(v => {
-    const pct = v.points_evaluated > 0
-      ? (v.points_protected / v.points_evaluated) * 100
-      : null;
+    // Usar shielded_pct del servidor (ponderado por área, igual que is_ok)
+    // Si no viene, calcular desde conteo como fallback
+    const pct = v.shielded_pct != null
+      ? v.shielded_pct
+      : (v.points_evaluated > 0 ? (v.points_protected / v.points_evaluated) * 100 : null);
     const pctStr   = pct != null ? pct.toFixed(1) + '%' : '—';
     const pctColor = pct == null ? '' : pct >= 100 ? 'color:#16a34a;' : pct >= 80 ? 'color:#d97706;' : 'color:#dc2626;';
 

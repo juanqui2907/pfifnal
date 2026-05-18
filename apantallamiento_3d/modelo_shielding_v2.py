@@ -231,6 +231,9 @@ def _format_verification(records: list) -> list:
     """
     Convierte fase6_verification_records del notebook al formato
     que espera la API REST de TerraShield.
+
+    Usa percent_area (ponderado por área) como métrica principal,
+    igual que el notebook internamente para decidir is_ok.
     """
     out = []
     for rec in records:
@@ -240,6 +243,16 @@ def _format_verification(records: list) -> list:
         total       = int(rec.get('total_count', 0))
         min_margin  = rec.get('min_margin')
         unprotected = rec.get('unprotected_points', [])
+
+        # Usar percent_area (ponderado por área) — mismo criterio que is_ok
+        protected_w = float(rec.get('protected_weight', 0.0))
+        total_w     = float(rec.get('total_weight', 0.0))
+        if total_w > 0:
+            pct = round(100.0 * protected_w / total_w, 2)
+        elif total > 0:
+            pct = round(100.0 * protected / total, 2)
+        else:
+            pct = 0.0
 
         max_excess = None
         if not is_ok and min_margin is not None:
@@ -253,6 +266,7 @@ def _format_verification(records: list) -> list:
         out.append({
             'equipment_name':               cube.get('name', 'Equipo'),
             'fully_shielded':               is_ok,
+            'shielded_pct':                 pct,
             'points_evaluated':             total,
             'points_protected':             protected,
             'points_not_protected':         total - protected,
