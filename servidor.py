@@ -82,12 +82,14 @@ def _query_suelo(lat, lon):
     if not _db_disponible:
         return None
     con = _get_db()
+    # Margen pequeño para evitar fallos por precisión flotante en bordes de bbox
+    EPS = 0.001  # ~100 metros en Colombia, seguro para polígonos del IGAC
     cur = con.execute(
         '''SELECT tipo_suelo, subtipo_nc, categoria, rho, confianza, geometry
            FROM poligonos
            WHERE min_lon <= ? AND max_lon >= ?
              AND min_lat <= ? AND max_lat >= ?''',
-        (lon, lon, lat, lat)
+        (lon + EPS, lon - EPS, lat + EPS, lat - EPS)
     )
     for row in cur:
         tipo_suelo, subtipo_nc, categoria, rho, confianza, geom_json = row
