@@ -585,7 +585,7 @@
           <div class="result-table-wrap" id="apant-ieee-wrap" style="display:none;margin-bottom:20px;">
             <div style="padding:14px 16px 10px;border-bottom:1px solid var(--grey-line);display:flex;align-items:center;gap:8px;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:var(--blue-mid);flex-shrink:0;"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-              <span style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-mid);">Análisis estadístico de riesgo — IEEE Std 998</span>
+              <span style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-mid);">Indicadores de exposición atmosférica del sitio</span>
             </div>
             <div id="apant-ieee-body" style="padding:16px 18px;"></div>
           </div>
@@ -1436,7 +1436,7 @@
           Descargar / Abrir manual (PDF)
         </a>
         <div style="margin-top:14px;">
-          <a href="https://drive.google.com/file/d/1jMs9NbHLb9oNSeWP4GXZgkbF7DsxCHGR/view?usp=sharing" target="_blank" rel="noopener" style="font-size:0.78rem;color:var(--blue-mid);text-decoration:underline;">
+          <a href="https://drive.google.com/file/d/1ATmShuc6Ipte22sxYr-7lCJnNcZA8jgL/view?usp=sharing" target="_blank" rel="noopener" style="font-size:0.78rem;color:var(--blue-mid);text-decoration:underline;">
             ¿No abre? Ver manual en Google Drive
           </a>
         </div>
@@ -1473,7 +1473,7 @@ function handleManualDownload(e) {
     e.preventDefault();
     const w = window.open('ManualDeUsuario.pdf', '_blank');
     if (!w || w.closed || typeof w.closed === 'undefined') {
-      window.location.href = 'https://drive.google.com/file/d/1jMs9NbHLb9oNSeWP4GXZgkbF7DsxCHGR/view?usp=sharing';
+      window.location.href = 'https://drive.google.com/file/d/1ATmShuc6Ipte22sxYr-7lCJnNcZA8jgL/view?usp=sharing';
     }
   } else {
     /* Desde servidor: intentamos fetch para verificar existencia */
@@ -1486,11 +1486,11 @@ function handleManualDownload(e) {
           a.download = 'ManualDeUsuario.pdf';
           a.click();
         } else {
-          window.open('https://drive.google.com/file/d/1jMs9NbHLb9oNSeWP4GXZgkbF7DsxCHGR/view?usp=sharing', '_blank');
+          window.open('https://drive.google.com/file/d/1ATmShuc6Ipte22sxYr-7lCJnNcZA8jgL/view?usp=sharing', '_blank');
         }
       })
       .catch(() => {
-        window.open('https://drive.google.com/file/d/1jMs9NbHLb9oNSeWP4GXZgkbF7DsxCHGR/view?usp=sharing', '_blank');
+        window.open('https://drive.google.com/file/d/1ATmShuc6Ipte22sxYr-7lCJnNcZA8jgL/view?usp=sharing', '_blank');
       });
   }
 }
@@ -3002,20 +3002,14 @@ async function exportarPDF() {
         const f4   = v => isFinite(v) && v !== 0 ? parseFloat(v.toPrecision(4)).toString() : (v === 0 ? '0' : 'Inf');
 
         doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
-        doc.text('Analisis estadistico de riesgo - IEEE Std 998', 14, ya);
+        doc.text('Indicadores de exposición atmosférica del sitio', 14, ya);
         ya += 4;
         doc.autoTable({
           startY: ya,
           head: [['Variable', 'Formula', 'Valor', 'Unidad']],
           body: [
-            ['Is - Corriente critica de rayo',     '2.2 x BIL / Zs',    f4(IsN),                       'kA'],
-            ['S  - Radio de esfera rodante',        '8 x k x Is^0.65',   f4(sN),                        'm'],
-            ['P  - Prob. de superar Is',            '1/(1+(Is/24)^2.6)', f4(PsN * 100) + ' %',          ''],
-            ['P_pen - Prob. de penetracion',        '1 - P',             f4(PpN * 100) + ' %',          ''],
             ['Ns - Impactos directos/año',          'Ng x A / 1e6',      f4(NsN),                       'impactos/año'],
             ['Ts - Años entre impactos',            '1 / Ns',            NsN > 0 ? f4(1/NsN) : 'Inf',  'años/impacto'],
-            ['lambda - Tasa anual penetracion',     'Ns x P_pen',        lamN > 0 ? f4(lamN) : '0',     'pen./año'],
-            ['T_pen - Años entre penetraciones',    '1 / lambda',        lamN > 0 ? f4(1/lamN) : 'Inf', 'años/pen.'],
           ],
           styles:     { fontSize: 8, cellPadding: 3 },
           headStyles: { fillColor: [10, 61, 145], textColor: 255, fontStyle: 'bold' },
