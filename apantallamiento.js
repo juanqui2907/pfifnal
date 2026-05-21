@@ -486,12 +486,8 @@ function apantRenderResults(data) {
 /* ─── Cálculos estadísticos IEEE 998 ───────────────────────────────────────── */
 
 function apantCalcIEEE998() {
-  const BIL = parseFloat(document.getElementById('apant-bil')?.value) || 350;
-  const Zs  = parseFloat(document.getElementById('apant-zs')?.value)  || 300;
-  const k   = parseFloat(document.getElementById('apant-k')?.value)   || 1.2;
-  const A   = parseFloat(document.getElementById('apant-area')?.value);
-  // Ng tomado del campo calculado (GFD del proyecto o desde Td)
-  const Ng  = parseFloat(document.getElementById('apant-ng-calc')?.value);
+  const A  = parseFloat(document.getElementById('apant-area')?.value);
+  const Ng = parseFloat(document.getElementById('apant-ng-calc')?.value);
 
   const wrap = document.getElementById('apant-ieee-wrap');
   const body = document.getElementById('apant-ieee-body');
@@ -502,20 +498,10 @@ function apantCalcIEEE998() {
 
   const sig    = v => parseFloat(v.toPrecision(4));
   const fmtNum = (v, u) => `${sig(v)} <span style="font-size:0.7rem;font-weight:400;color:var(--text-light);">${u}</span>`;
-  const fmtPct = v      => `${sig(v * 100)} <span style="font-size:0.7rem;font-weight:400;color:var(--text-light);">%</span>`;
   const NA     = (hint) => `<span style="font-size:0.82rem;color:var(--text-light);font-style:italic;">— ${hint}</span>`;
 
-  // Valores que siempre se pueden calcular (solo necesitan BIL, Zs, k)
-  const Is       = (2.2 * BIL) / Zs;
-  const S        = 8 * k * Math.pow(Is, 0.65);
-  const P_supera = 1 / (1 + Math.pow(Is / 24, 2.6));
-  const P_pen    = 1 - P_supera;
-
-  // Valores que dependen de Ng y A
-  const Ns         = hasNg && hasA  ? Ng * A / 1_000_000        : null;
-  const Ts         = Ns   > 0       ? 1 / Ns                    : null;
-  const lambda_pen = Ns   != null   ? Ns * P_pen                : null;
-  const T_pen      = lambda_pen > 0 ? 1 / lambda_pen            : null;
+  const Ns = hasNg && hasA ? Ng * A / 1_000_000 : null;
+  const Ts = Ns > 0        ? 1 / Ns              : null;
 
   const rows = [
     {
@@ -533,36 +519,6 @@ function apantCalcIEEE998() {
       label:   'Ts — Años promedio entre impactos directos',
       val:     Ns != null ? (Ts ? fmtNum(Ts, 'años/impacto') : '∞') : NA('ingrese Ng y A'),
     },
-    {
-      formula: 'Is = 2.2 × BIL / Zs',
-      label:   'Is — Corriente crítica de rayo',
-      val:     fmtNum(Is, 'kA'),
-    },
-    {
-      formula: 'S = 8 × k × Is⁰·⁶⁵',
-      label:   'S — Distancia de impacto (radio de esfera equivalente)',
-      val:     fmtNum(S, 'm'),
-    },
-    {
-      formula: 'P = 1 / (1 + (Is/24)²·⁶)',
-      label:   'P — Probabilidad de que un rayo supere Is',
-      val:     fmtPct(P_supera),
-    },
-    {
-      formula: 'P_pen = 1 − P',
-      label:   'P_pen — Probabilidad de penetración estimada',
-      val:     fmtPct(P_pen),
-    },
-    {
-      formula: 'λ = Ns × P_pen',
-      label:   'λ — Tasa anual estimada de penetración',
-      val:     lambda_pen != null ? (lambda_pen > 0 ? fmtNum(lambda_pen, 'penetraciones/año') : 'No calculable') : NA('ingrese Ng y A'),
-    },
-    {
-      formula: 'T_pen = 1 / λ',
-      label:   'T_pen — Años promedio entre penetraciones',
-      val:     lambda_pen != null ? (T_pen ? fmtNum(T_pen, 'años/penetración') : '∞') : NA('ingrese Ng y A'),
-    },
   ];
 
   const missingNote = (!hasNg || !hasA)
@@ -578,9 +534,6 @@ function apantCalcIEEE998() {
           <div style="font-size:0.73rem;color:var(--text-mid);margin-bottom:5px;line-height:1.3;">${r.label}</div>
           <div style="font-size:1.05rem;font-weight:700;font-family:var(--font-mono);color:var(--blue-dark);">${r.val}</div>
         </div>`).join('')}
-    </div>
-    <div style="font-size:0.7rem;color:var(--text-light);line-height:1.6;border-top:1px solid var(--grey-line);padding-top:10px;">
-      <strong>Nota:</strong> P_pen es la probabilidad complementaria de no intercepción (P_pen = 1 − P_supera). No equivale directamente a probabilidad de falla del sistema. La tasa λ indica la frecuencia estimada con que un rayo podría superar la envolvente de apantallamiento.
     </div>`;
   wrap.style.display = '';
 }

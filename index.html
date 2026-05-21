@@ -45,6 +45,7 @@
       <path d="M14 31V34M17 31V34M20 31V34M23 31V34M26 31V34" stroke="#8FB3E8" stroke-width="0.8"/>
     </svg>
     <span class="ts-brand">TERRASHIELD</span>
+    <span class="ts-version">v1.0.0</span>
   </div>
 
   <div class="home-hero" style="position:relative;overflow:hidden;">
@@ -2989,16 +2990,8 @@ async function exportarPDF() {
       const ngNum = parseFloat(apNg);
       const aNum  = parseFloat(apA);
       if (ngNum > 0 && aNum > 0) {
-        const bilN = parseFloat(apBIL) || 350;
-        const zsN  = parseFloat(apZs)  || 300;
-        const kN   = parseFloat(apK)   || 1.2;
-        const IsN  = (2.2 * bilN) / zsN;
-        const sN   = 8 * kN * Math.pow(IsN, 0.65);
-        const NsN  = ngNum * aNum / 1e6;
-        const PsN  = 1 / (1 + Math.pow(IsN / 24, 2.6));
-        const PpN  = 1 - PsN;
-        const lamN = NsN * PpN;
-        const f4   = v => isFinite(v) && v !== 0 ? parseFloat(v.toPrecision(4)).toString() : (v === 0 ? '0' : 'Inf');
+        const NsN = ngNum * aNum / 1e6;
+        const f4  = v => isFinite(v) && v !== 0 ? parseFloat(v.toPrecision(4)).toString() : (v === 0 ? '0' : 'Inf');
 
         doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
         doc.text('Indicadores de exposición atmosférica del sitio', 14, ya);
@@ -3007,6 +3000,7 @@ async function exportarPDF() {
           startY: ya,
           head: [['Variable', 'Formula', 'Valor', 'Unidad']],
           body: [
+            ['Ng - Densidad de descargas a tierra', 'Del proyecto',       f4(ngNum),                     'flashes/km2·año'],
             ['Ns - Impactos directos/año',          'Ng x A / 1e6',      f4(NsN),                       'impactos/año'],
             ['Ts - Años entre impactos',            '1 / Ns',            NsN > 0 ? f4(1/NsN) : 'Inf',  'años/impacto'],
           ],

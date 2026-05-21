@@ -443,20 +443,11 @@ function exportTXT() {
     const ngN = parseFloat(ngTxt);
     const aN  = parseFloat(aTxt);
     if (ngN > 0 && aN > 0) {
-      const bilN = parseFloat(document.getElementById('apant-bil')?.value) || 350;
-      const zsN  = parseFloat(document.getElementById('apant-zs')?.value)  || 300;
-      const kN   = parseFloat(document.getElementById('apant-k')?.value)   || 1.2;
-      const IsN  = (2.2 * bilN) / zsN;
-      const NsN  = ngN * aN / 1e6;
-      const PsN  = 1 / (1 + Math.pow(IsN / 24, 2.6));
-      const PpN  = 1 - PsN;
-      const lamN = NsN * PpN;
-      const f4   = v => isFinite(v) ? parseFloat(v.toPrecision(4)) : '∞';
-      txt += `Is (corriente crítica): ${f4(IsN)} kA\n`;
+      const NsN = ngN * aN / 1e6;
+      const TsN = NsN > 0 ? 1 / NsN : null;
+      const f4  = v => isFinite(v) ? parseFloat(v.toPrecision(4)) : '∞';
       txt += `Ns (impactos directos esperados): ${f4(NsN)} impactos/año\n`;
-      txt += `P_pen (prob. de penetración estimada): ${f4(PpN * 100)} %\n`;
-      txt += `λ (tasa anual de penetración): ${lamN > 0 ? f4(lamN) : '0'} pen./año\n`;
-      txt += `T_pen (años entre penetraciones): ${lamN > 0 ? f4(1/lamN) : '∞'} años/pen.\n`;
+      txt += `Ts (años promedio entre impactos): ${TsN ? f4(TsN) : '∞'} años/impacto\n`;
     }
     if (ar.verification && ar.verification.length > 0) {
       txt += `\nVerificación de equipos:\n`;
