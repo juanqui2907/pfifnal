@@ -43,7 +43,7 @@ function getNgFromGrid(lat, lon) {
   return best;
 }
 
-// Datos de suelos IEEE 80 — consultados al servidor vía API (sin descarga masiva)
+// Datos de suelos IEEE 80 — consultados al servidor vía API (suelos.db)
 async function getSueloFromAPI(lat, lon) {
   try {
     const res = await fetch(`/suelo?lat=${lat}&lon=${lon}`);
@@ -280,12 +280,16 @@ async function validarUbicacion() {
       sueloNota   = 'No hay datos suficientes para clasificar el tipo de suelo en este punto.';
     }
 
-    // Fallback para capitales de departamento: si el punto coincide con una entrada
-    // predefinida en deptData, usar el tipo de suelo de referencia en lugar de "No clasificable"
+    // Fallback por ciudad: si Nominatim identifica el municipio como una capital conocida,
+    // propagar su tipo de suelo de referencia a toda la ciudad.
+    // Se usa includes() bidireccional para manejar nombres oficiales extendidos
+    // (ej: Nominatim devuelve "Cartagena de Indias" pero deptData tiene "Cartagena").
     if (tipoSuelo === 'No clasificable') {
-      const deptEntry = Object.values(deptData).find(d =>
-        Math.abs(d.lat - lat) < 0.0001 && Math.abs(d.lon - lon) < 0.0001
-      );
+      const mNom = municipio.toLowerCase();
+      const deptEntry = Object.values(deptData).find(d => {
+        const mRef = d.municipio.toLowerCase();
+        return mNom === mRef || mNom.includes(mRef) || mRef.includes(mNom);
+      });
       if (deptEntry?.tipoSuelo) {
         tipoSuelo   = deptEntry.tipoSuelo;
         rhoSuelo    = deptEntry.rhoSuelo;
